@@ -95,6 +95,7 @@ regime:
 # --- OPTIMIZER ---
 optimizer:
   objective: max_sharpe
+  risk_aversion: 1.5             # calibrated via walk-forward median across 9 windows
   turnover_lambda: 0.005
   tracking_error_target: 0.04
   tracking_error_cap: 0.06

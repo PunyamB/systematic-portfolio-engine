@@ -264,7 +264,7 @@ def run_optimizer(run_date: date = None, regime: str = "recovery") -> pd.DataFra
     w_active = w - w_spy
 
     # Objective: maximize alpha - risk penalty - turnover penalty
-    risk_aversion = 1.0
+    risk_aversion = OPT.get("risk_aversion", 1.5)
     objective = cp.Maximize(
         mu @ w
         - (risk_aversion / 2) * cp.quad_form(w, cp.psd_wrap(sigma))

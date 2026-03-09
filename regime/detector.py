@@ -24,39 +24,39 @@ def compute_breadth(as_of_date: date, lookback: int = 200) -> float:
     """
     Computes market breadth: % of S&P 500 stocks trading above their
     200-day moving average. Returns float between 0 and 1.
-    Falls back to 0.5 (neutral) if insufficient price data.
+    Vectorized — single pivot + rolling mean, no per-ticker loop.
     """
     prices = load_prices()
     if prices.empty:
         print("[regime] No price data for breadth — using neutral 0.5")
         return 0.5
 
-    prices = prices.sort_values("date")
     cutoff = pd.Timestamp(as_of_date)
+    prices = prices[prices["date"] <= cutoff].copy()
 
-    # Need at least lookback days of history
-    tickers = prices["ticker"].unique()
-    above_ma = 0
-    valid    = 0
+    # Pivot to wide format: rows=dates, cols=tickers, values=close
+    pivot = (
+        prices.pivot_table(index="date", columns="ticker", values="close")
+        .sort_index()
+    )
 
-    for ticker in tickers:
-        ticker_px = prices[prices["ticker"] == ticker].sort_values("date")
-        ticker_px = ticker_px[ticker_px["date"] <= cutoff]
+    if len(pivot) < lookback:
+        print("[regime] Insufficient price history for breadth — using neutral 0.5")
+        return 0.5
 
-        if len(ticker_px) < lookback:
-            continue
+    # 200-day rolling mean for all tickers at once
+    ma_200 = pivot.tail(lookback).mean()
+    last_close = pivot.iloc[-1]
 
-        ma_200     = ticker_px["close"].tail(lookback).mean()
-        last_close = ticker_px["close"].iloc[-1]
-
-        valid += 1
-        if last_close > ma_200:
-            above_ma += 1
+    # Only count tickers with enough history (non-NaN in both)
+    valid_mask = ma_200.notna() & last_close.notna()
+    valid = int(valid_mask.sum())
 
     if valid == 0:
         print("[regime] Insufficient tickers for breadth — using neutral 0.5")
         return 0.5
 
+    above_ma = int((last_close[valid_mask] > ma_200[valid_mask]).sum())
     breadth = above_ma / valid
     print(f"[regime] Breadth: {above_ma}/{valid} stocks above 200d MA = {breadth:.2%}")
     return breadth

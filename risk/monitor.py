@@ -6,6 +6,7 @@
 
 import pandas as pd
 import numpy as np
+from pathlib import Path
 from datetime import date, timedelta
 from scipy import stats
 from data.storage import load_portfolio, save_portfolio, load_prices
@@ -365,30 +366,60 @@ def compute_liquidity_scores(prices: pd.DataFrame) -> pd.DataFrame:
 # FULL DAILY RISK RUN
 # ------------------------------------------------------------
 
-def run_risk_monitor(prices: pd.DataFrame, spy_prices: pd.DataFrame = None) -> dict:
+def run_risk_monitor(run_date: date = None) -> dict:
     """
     Full EOD risk monitoring run.
+    Loads prices and SPY prices from storage (cached).
     Returns dict with all risk metrics and flags.
+    Keys: nav, circuit_breaker, stop_exits, stop_triggers, drift,
+          liquidity, beta, tracking_error, te_breach, drawdown
     """
+    if run_date is None:
+        run_date = date.today()
+
     nav_history = load_nav_history()
     nav = float(nav_history.iloc[-1]["nav"]) if not nav_history.empty else cfg["portfolio"]["initial_capital"]
 
-    print(f"[risk] Running EOD risk monitor")
+    print(f"[risk] Running EOD risk monitor for {run_date}")
+
+    # Load prices from cache
+    prices = load_prices()
+    from data.storage import load_spy_prices
+    spy_prices = load_spy_prices()
 
     circuit_breaker  = check_circuit_breaker(nav)
-    stop_triggers    = check_trailing_stops(prices)
+    stop_triggers_df = check_trailing_stops(prices)
     liquidity_scores = compute_liquidity_scores(prices)
+
+    # Build stop_exits list for runner (P2 priority trades)
+    stop_exits = []
+    if not stop_triggers_df.empty:
+        stop_exits = stop_triggers_df["ticker"].tolist()
+
+    # Drift detection — compare current vs last target weights
+    drift_result = {"triggered": False, "position_drift": [], "portfolio_drift": False, "sector_drift": []}
+    target_path = Path("data/processed/target_weights.parquet")
+    if target_path.exists():
+        target_weights = pd.read_parquet(target_path)
+        drift_result = check_drift(target_weights)
+        drift_result["triggered"] = bool(
+            drift_result["position_drift"]
+            or drift_result["portfolio_drift"]
+            or drift_result["sector_drift"]
+        )
 
     tracking_error = 0.0
     beta           = 1.0
-    if spy_prices is not None and not spy_prices.empty:
+    if not spy_prices.empty:
         tracking_error = compute_tracking_error(nav_history, spy_prices)
         beta           = compute_beta(prices, spy_prices)
 
     te_breach = tracking_error > cfg["optimizer"]["tracking_error_cap"]
 
+    drawdown = circuit_breaker.get("drawdown", 0.0)
+
     print(f"[risk] Beta: {beta:.3f} | Tracking Error: {tracking_error:.2%} | TE breach: {te_breach}")
-    print(f"[risk] Stop triggers: {len(stop_triggers)} | CB tier: {circuit_breaker['tier']}")
+    print(f"[risk] Stop exits: {len(stop_exits)} | CB tier: {circuit_breaker['tier']} | Drift triggered: {drift_result['triggered']}")
 
     if te_breach:
         notify(
@@ -399,9 +430,12 @@ def run_risk_monitor(prices: pd.DataFrame, spy_prices: pd.DataFrame = None) -> d
     return {
         "nav":             nav,
         "circuit_breaker": circuit_breaker,
-        "stop_triggers":   stop_triggers,
+        "stop_exits":      stop_exits,
+        "stop_triggers":   stop_triggers_df,
+        "drift":           drift_result,
         "liquidity":       liquidity_scores,
         "beta":            beta,
         "tracking_error":  tracking_error,
-        "te_breach":       te_breach
+        "te_breach":       te_breach,
+        "drawdown":        drawdown,
     }
