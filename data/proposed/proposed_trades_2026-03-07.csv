@@ -1,0 +1,37 @@
+ticker,direction,current_weight,target_weight,delta_weight,trade_value_usd,sector,regime,run_date
+MU,BUY,0.0,0.0255,0.0255,25473.96,Technology,recovery,2026-03-07
+SWK,BUY,0.0,0.0189,0.0189,18889.18,Industrials,recovery,2026-03-07
+DECK,BUY,0.0,0.0357,0.0357,35653.55,Consumer Discretionary,recovery,2026-03-07
+IP,BUY,0.0,0.0206,0.0206,20566.88,Consumer Discretionary,recovery,2026-03-07
+STX,BUY,0.0,0.0186,0.0186,18635.66,Technology,recovery,2026-03-07
+USB,BUY,0.0,0.05,0.05,50046.15,Financials,recovery,2026-03-07
+NEM,BUY,0.0,0.0298,0.0298,29800.02,Materials,recovery,2026-03-07
+PPG,BUY,0.0,0.0491,0.0491,49084.32,Materials,recovery,2026-03-07
+RL,BUY,0.0,0.0236,0.0236,23627.69,Consumer Discretionary,recovery,2026-03-07
+TFC,BUY,0.0,0.0322,0.0322,32210.75,Financials,recovery,2026-03-07
+PNC,BUY,0.0,0.047,0.047,47042.73,Financials,recovery,2026-03-07
+BF-B,BUY,0.0,0.034,0.034,34048.51,Consumer Staples,recovery,2026-03-07
+FSLR,BUY,0.0,0.0127,0.0127,12695.05,Energy,recovery,2026-03-07
+HAL,BUY,0.0,0.05,0.05,50046.15,Energy,recovery,2026-03-07
+CRH,BUY,0.0,0.0143,0.0143,14288.88,Materials,recovery,2026-03-07
+UPS,BUY,0.0,0.0219,0.0219,21927.09,Industrials,recovery,2026-03-07
+MDT,BUY,0.0,0.05,0.05,50046.15,Healthcare,recovery,2026-03-07
+FDX,BUY,0.0,0.0086,0.0086,8570.99,Industrials,recovery,2026-03-07
+BK,BUY,0.0,0.05,0.05,50046.15,Financials,recovery,2026-03-07
+TEL,BUY,0.0,0.0203,0.0203,20267.59,Technology,recovery,2026-03-07
+VTRS,BUY,0.0,0.0044,0.0044,4438.72,Healthcare,recovery,2026-03-07
+AME,BUY,0.0,0.0348,0.0348,34815.08,Industrials,recovery,2026-03-07
+HSIC,BUY,0.0,0.0131,0.0131,13075.78,Healthcare,recovery,2026-03-07
+TMO,BUY,0.0,0.0212,0.0212,21182.95,Healthcare,recovery,2026-03-07
+AVY,BUY,0.0,0.0061,0.0061,6097.16,Industrials,recovery,2026-03-07
+MKC,BUY,0.0,0.0093,0.0093,9308.56,Consumer Staples,recovery,2026-03-07
+ACGL,BUY,0.0,0.044,0.044,43971.54,Financials,recovery,2026-03-07
+ABBV,BUY,0.0,0.0492,0.0492,49163.32,Healthcare,recovery,2026-03-07
+CB,BUY,0.0,0.0277,0.0277,27709.41,Financials,recovery,2026-03-07
+CMS,BUY,0.0,0.0496,0.0496,49582.39,Utilities,recovery,2026-03-07
+CPB,BUY,0.0,0.0062,0.0062,6243.84,Consumer Staples,recovery,2026-03-07
+EA,BUY,0.0,0.05,0.05,50046.15,Technology,recovery,2026-03-07
+NI,BUY,0.0,0.0217,0.0217,21720.98,Utilities,recovery,2026-03-07
+RSG,BUY,0.0,0.011,0.011,11035.11,Industrials,recovery,2026-03-07
+T,BUY,0.0,0.0025,0.0025,2471.07,Communication Services,recovery,2026-03-07
+ROP,BUY,0.0,0.0162,0.0162,16170.45,Industrials,recovery,2026-03-07

@@ -1,0 +1,57 @@
+{
+  "run_date": "2026-03-07",
+  "run_at": "2026-03-07T02:24:28.840010",
+  "total_sec": 1190.51,
+  "stages": {
+    "broker_health": {
+      "status": "success",
+      "duration_sec": 0.39,
+      "detail": ""
+    },
+    "corporate_actions": {
+      "status": "success",
+      "duration_sec": 0.0,
+      "detail": ""
+    },
+    "data_refresh": {
+      "status": "success",
+      "duration_sec": 1170.52,
+      "detail": ""
+    },
+    "nav": {
+      "status": "success",
+      "duration_sec": 0.42,
+      "detail": ""
+    },
+    "regime": {
+      "status": "success",
+      "duration_sec": 4.26,
+      "detail": ""
+    },
+    "risk_monitor": {
+      "status": "success",
+      "duration_sec": 0.01,
+      "detail": ""
+    },
+    "signals": {
+      "status": "success",
+      "duration_sec": 12.7,
+      "detail": ""
+    },
+    "decay_tracker": {
+      "status": "success",
+      "duration_sec": 0.05,
+      "detail": ""
+    },
+    "optimizer": {
+      "status": "success",
+      "duration_sec": 1.19,
+      "detail": ""
+    },
+    "proposed_trades": {
+      "status": "success",
+      "duration_sec": 0.48,
+      "detail": ""
+    }
+  }
+}

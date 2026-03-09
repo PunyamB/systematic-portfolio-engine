@@ -1,0 +1,5 @@
+strategy,cagr,bench_cagr,total_return,ann_vol,sharpe,sortino,calmar,max_drawdown,max_dd_days,tracking_error,info_ratio,alpha,beta,up_capture,down_capture,hit_rate,composite_score,rank,recommended_live
+mv_monthly,18.62,12.64,812.32,16.32,1.141,1.561,0.624,-29.84,58,11.39,0.444,9.32,0.736,89.0,81.2,59.0,38,1,True
+mv_quarterly,18.12,12.64,763.34,15.34,1.181,1.6,0.607,-29.84,58,11.65,0.384,9.62,0.672,81.4,73.2,58.3,35,2,False
+bl_monthly,18.64,12.64,813.73,16.02,1.163,1.609,0.666,-28.0,77,11.49,0.437,9.59,0.715,86.9,78.7,55.1,34,3,False
+bl_quarterly,16.51,12.64,622.82,15.1,1.093,1.493,0.59,-28.0,77,11.56,0.265,8.12,0.663,80.3,73.7,55.8,13,4,False

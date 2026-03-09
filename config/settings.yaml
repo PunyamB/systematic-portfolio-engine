@@ -1,0 +1,173 @@
+# ============================================================
+# SYSTEMATIC PORTFOLIO ENGINE — MASTER SETTINGS
+# All system parameters live here. Edit only via VS Code.
+# ============================================================
+
+# --- UNIVERSE & BENCHMARK ---
+universe:
+  index: SP500
+  benchmark: SPY
+  min_price: 5.0
+  min_adv_usd: 1_000_000
+
+# --- CAPITAL ---
+portfolio:
+  initial_capital: 1_000_000
+  max_position_weight: 0.05
+  cash_buffer: 0.02
+
+# --- REBALANCE ---
+rebalance:
+  frequency: monthly        # daily | weekly | monthly | quarterly
+  execution_time: "09:35"
+  fill_check_time: "09:45"
+
+# --- SIGNALS ---
+signals:
+  lookback_momentum: 252
+  lookback_reversal: 5
+  rsi_period: 14
+  rsi_oversold: 30
+  rsi_overbought: 70
+  piotroski_min_score: 0
+  ic_floor: 0.0
+  ic_lookback: 63
+  regime_multipliers:
+    bull:
+      momentum_12_1: 1.3
+      earnings_momentum: 1.2
+      pe_zscore: 1.0
+      pb_zscore: 1.0
+      ev_ebitda_zscore: 1.0
+      roe_stability: 1.0
+      gross_margin_trend: 1.0
+      piotroski: 1.0
+      earnings_accruals: 1.0
+      short_term_reversal: 0.7
+      rsi_extremes: 0.7
+    recovery:
+      momentum_12_1: 1.1
+      earnings_momentum: 1.1
+      pe_zscore: 1.2
+      pb_zscore: 1.2
+      ev_ebitda_zscore: 1.2
+      roe_stability: 1.1
+      gross_margin_trend: 1.1
+      piotroski: 1.1
+      earnings_accruals: 1.1
+      short_term_reversal: 1.0
+      rsi_extremes: 1.0
+    bear:
+      momentum_12_1: 0.7
+      earnings_momentum: 0.8
+      pe_zscore: 1.2
+      pb_zscore: 1.2
+      ev_ebitda_zscore: 1.2
+      roe_stability: 1.3
+      gross_margin_trend: 1.1
+      piotroski: 1.3
+      earnings_accruals: 1.3
+      short_term_reversal: 1.2
+      rsi_extremes: 1.2
+    crisis:
+      momentum_12_1: 0.5
+      earnings_momentum: 0.5
+      pe_zscore: 1.0
+      pb_zscore: 1.0
+      ev_ebitda_zscore: 1.0
+      roe_stability: 1.5
+      gross_margin_trend: 1.0
+      piotroski: 1.5
+      earnings_accruals: 1.5
+      short_term_reversal: 1.3
+      rsi_extremes: 1.3
+
+# --- REGIME DETECTION ---
+regime:
+  vix_lookback: 252
+  vix_elevated_threshold: 0.80
+  vix_crisis_threshold: 1.20
+  breadth_high: 0.60
+  breadth_low: 0.40
+  pmi_expansion: 50.0
+  economic_cycle_lookback: 5   # weeks
+
+# --- OPTIMIZER ---
+optimizer:
+  objective: max_sharpe
+  turnover_lambda: 0.005
+  tracking_error_target: 0.04
+  tracking_error_cap: 0.06
+  covariance_method: ledoit_wolf
+  cov_lookback: 252
+
+# --- TURNOVER ---
+turnover:
+  round_trip_cost_bps: 10
+  max_turnover_per_rebalance: 0.30
+
+# --- DRIFT REBALANCE ---
+drift_rebalance:
+  max_position_drift: 0.03
+  max_portfolio_drift: 0.05
+  max_sector_drift: 0.05
+
+# --- TRAILING STOPS ---
+stop_loss:
+  method: trailing
+  vol_lookback: 25
+  vol_multiplier: 2.0
+  floor: 0.05
+  cap: 0.20
+
+# --- DRAWDOWN CIRCUIT BREAKER ---
+circuit_breaker:
+  t1_pct: 0.05    # info only
+  t2_pct: 0.10    # reduce max weight to 3.5%, weekly rebalance
+  t3_pct: 0.15    # gross exposure 70%, max weight 2.5%, daily rebalance
+  t4_pct: 0.20    # reduce to 40% invested, pause 5 days
+  recovery_ratio: 0.40
+
+# --- SECTOR NEUTRALIZATION ---
+sectors:
+  standalone:
+    - Technology
+    - Healthcare
+    - Consumer Discretionary
+    - Consumer Staples
+    - Communication Services
+  pooled:
+    - [Materials, Industrials]
+    - [Real Estate, Financials]
+    - [Utilities, Energy]
+  min_stocks_for_standalone: 30
+
+# --- RISK MODEL ---
+risk:
+  beta_lookback: 252
+  signal_decay_threshold: 0.65
+  liquidity_flag_pct: 0.10
+
+# --- DATA QUALITY ---
+data_quality:
+  max_missing_pct: 0.05
+  stale_days: 3
+
+# --- REGIME OVERRIDE ---
+regime_override:
+  enabled: false
+  force_state: null    # bull | bear | recovery | crisis
+
+# --- EXECUTION ---
+execution:
+  order_type: market
+  pre_trade_file: data/approved/approved_trades.csv
+
+# --- PATHS ---
+paths:
+  raw_data: data/raw
+  processed_data: data/processed
+  snapshots: data/snapshots
+  approved_trades: data/approved
+  logs: logs
+  pipeline_health: logs/pipeline_health.json
