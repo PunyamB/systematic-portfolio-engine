@@ -3,6 +3,7 @@ SirAlgotsAlot/
 .venv/
 venv/
 env/
+ENV/
 
 # Python cache
 __pycache__/
@@ -12,6 +13,7 @@ __pycache__/
 
 # Environment variables
 .env
+.envrc
 *.env
 
 # Logs
@@ -19,7 +21,7 @@ logs/
 *.log
 
 # Jupyter
-.ipynb_checkpoints/
+.ipynb_checkpoints
 notebooks/.ipynb_checkpoints/
 
 # OS
@@ -32,3 +34,14 @@ pipeline_running.flag
 # Secrets
 config/secrets.yaml
 config/api_keys.yaml
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Type checkers / linters
+.mypy_cache/
+.ruff_cache/
+.pytype/
