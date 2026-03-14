@@ -77,7 +77,16 @@ st.markdown("""
   }
   .sidebar-stat { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8BAEC8; margin-bottom: 10px; }
 
-  /* Methodology tab styles */
+  .regime-legend {
+    display: flex; align-items: center; gap: 20px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    letter-spacing: 0.12em; color: #4A6080; padding: 6px 0;
+  }
+  .regime-swatch {
+    display: inline-block; width: 10px; height: 10px;
+    border-radius: 2px; margin-right: 5px; vertical-align: middle;
+  }
+
   .method-card {
     background: #0C1220; border: 1px solid #1E2D45; border-radius: 8px;
     padding: 20px 24px; margin-bottom: 16px;
@@ -149,17 +158,24 @@ PLOTLY_BASE = dict(
     hovermode="x unified",
 )
 
+REGIME_COLORS = {
+    "bull":     "rgba(0,196,180,0.13)",
+    "recovery": "rgba(74,144,217,0.10)",
+    "bear":     "rgba(212,160,23,0.13)",
+    "crisis":   "rgba(224,82,82,0.14)",
+}
+
 # ── PATHS ─────────────────────────────────────────────────────────────────────
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 def dpath(*parts):
     return os.path.join(BASE, "data", *parts)
 
+
 # ── DATA LOADERS ──────────────────────────────────────────────────────────────
 @st.cache_data(show_spinner=False)
 def load_prices():
-    df = pd.read_parquet(dpath("backtest/prices.parquet"))
-    return df
+    return pd.read_parquet(dpath("backtest/prices.parquet"))
 
 @st.cache_data(show_spinner=False)
 def load_signals():
@@ -180,15 +196,21 @@ def load_signal_decay():
     return df
 
 @st.cache_data(show_spinner=False)
+def load_regime_history():
+    p = dpath("backtest/regime_history.parquet")
+    if not os.path.exists(p):
+        return pd.DataFrame()
+    df = pd.read_parquet(p)
+    df["date"] = pd.to_datetime(df["date"])
+    return df.sort_values("date").reset_index(drop=True)
+
+@st.cache_data(show_spinner=False)
 def load_wf_nav_stitched(strategy, freq):
     """
     Chain-links walk-forward windows so NAV compounds continuously.
-    Each window starts at $1M independently — we convert to daily returns
-    first, then compound from a single $1M base across all windows in order.
     """
     windows = [str(i) for i in range(1, 10)] + ['holdout']
     return_series = []
-
     for w in windows:
         f = dpath(f"backtest/wf_results/nav_window_{w}_{strategy}_{freq}.parquet")
         if not os.path.exists(f):
@@ -196,17 +218,12 @@ def load_wf_nav_stitched(strategy, freq):
         df = pd.read_parquet(f)
         df.index = pd.to_datetime(df.index)
         df = df.sort_index()
-        # Convert to daily returns, skip first row (no prior)
         rets = df['nav'].pct_change().dropna()
         return_series.append(rets)
-
     if not return_series:
         return pd.DataFrame()
-
     all_returns = pd.concat(return_series).sort_index()
     all_returns = all_returns[~all_returns.index.duplicated(keep='first')]
-
-    # Compound from $1M base
     nav = (1 + all_returns).cumprod() * 1_000_000
     return pd.DataFrame({'nav': nav})
 
@@ -238,50 +255,68 @@ def get_spy_nav(index, start_nav):
     except Exception:
         return pd.Series(dtype=float)
 
+
+# ── REGIME OVERLAY HELPER ─────────────────────────────────────────────────────
+def add_regime_overlay(fig, regime_df, nav_start, nav_end):
+    """Adds vrect shading to a Plotly figure for each regime period."""
+    if regime_df.empty:
+        return
+    dates      = regime_df["date"].tolist()
+    composites = regime_df["composite"].tolist()
+    for i, (dt, state) in enumerate(zip(dates, composites)):
+        x0 = max(dt, nav_start)
+        x1 = min(dates[i + 1] if i + 1 < len(dates) else nav_end, nav_end)
+        if x0 >= x1:
+            continue
+        fig.add_vrect(
+            x0=x0, x1=x1,
+            fillcolor=REGIME_COLORS.get(state, "rgba(255,255,255,0.03)"),
+            line_width=0,
+            layer="below",
+        )
+
+
 # ── ANALYTICS ─────────────────────────────────────────────────────────────────
 def metrics(nav_series, spy_series=None, rf=0.02):
     nav = nav_series.dropna()
     if len(nav) < 10:
         return {}
-    r = nav.pct_change().dropna()
-    ann = 252
-    n_yr = len(nav) / ann
+    r     = nav.pct_change().dropna()
+    ann   = 252
+    n_yr  = len(nav) / ann
     total_ret = nav.iloc[-1] / nav.iloc[0] - 1
-    ann_ret = (1 + total_ret) ** (1 / n_yr) - 1 if n_yr > 0 else 0
-    vol = r.std() * np.sqrt(ann)
-    sharpe = (ann_ret - rf) / vol if vol > 0 else 0
-    down = r[r < 0].std() * np.sqrt(ann)
-    sortino = (ann_ret - rf) / down if down > 0 else 0
-    dd = (nav / nav.cummax() - 1)
-    max_dd = dd.min()
-    calmar = ann_ret / abs(max_dd) if max_dd != 0 else 0
+    ann_ret   = (1 + total_ret) ** (1 / n_yr) - 1 if n_yr > 0 else 0
+    vol       = r.std() * np.sqrt(ann)
+    sharpe    = (ann_ret - rf) / vol if vol > 0 else 0
+    down      = r[r < 0].std() * np.sqrt(ann)
+    sortino   = (ann_ret - rf) / down if down > 0 else 0
+    dd        = (nav / nav.cummax() - 1)
+    max_dd    = dd.min()
+    calmar    = ann_ret / abs(max_dd) if max_dd != 0 else 0
     out = dict(total_ret=total_ret, ann_ret=ann_ret, vol=vol,
                sharpe=sharpe, sortino=sortino, max_dd=max_dd, calmar=calmar)
     if spy_series is not None and not spy_series.empty:
-        spy_r = spy_series.pct_change().dropna()
+        spy_r  = spy_series.pct_change().dropna()
         common = r.index.intersection(spy_r.index)
         if len(common) > 10:
-            active = r.loc[common] - spy_r.loc[common]
-            te = active.std() * np.sqrt(ann)
-            cov = np.cov(r.loc[common], spy_r.loc[common])
-            beta = cov[0, 1] / cov[1, 1] if cov[1, 1] > 0 else 1
+            active  = r.loc[common] - spy_r.loc[common]
+            te      = active.std() * np.sqrt(ann)
+            cov     = np.cov(r.loc[common], spy_r.loc[common])
+            beta    = cov[0, 1] / cov[1, 1] if cov[1, 1] > 0 else 1
             spy_ann = (spy_series.iloc[-1] / spy_series.iloc[0]) ** (1 / n_yr) - 1
-            alpha = ann_ret - beta * spy_ann
+            alpha   = ann_ret - beta * spy_ann
             out.update(dict(te=te, beta=beta, alpha=alpha))
     return out
 
 def fmt(v, style="pct"):
     if v is None or (isinstance(v, float) and np.isnan(v)):
         return "—"
-    if style == "pct":
-        return f"{v:+.1%}" if v != 0 else "0.0%"
-    if style == "pct_plain":
-        return f"{v:.1%}"
-    if style == "x2":
-        return f"{v:.2f}"
-    if style == "x3":
-        return f"{v:.3f}"
+    if style == "pct":       return f"{v:+.1%}" if v != 0 else "0.0%"
+    if style == "pct_plain": return f"{v:.1%}"
+    if style == "x2":        return f"{v:.2f}"
+    if style == "x3":        return f"{v:.3f}"
     return str(v)
+
 
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -320,16 +355,18 @@ with st.sidebar:
     <div class="sidebar-stat">11 Multi-Factor</div>
     """, unsafe_allow_html=True)
 
+
 # ── LOAD CORE DATA ────────────────────────────────────────────────────────────
 with st.spinner("Loading backtest data…"):
-    wf_nav = load_wf_nav_stitched(strategy, freq)
+    wf_nav     = load_wf_nav_stitched(strategy, freq)
+    regime_df  = load_regime_history()
 
 if wf_nav.empty:
     st.error("No walk-forward NAV data found. Check data/backtest/wf_results/")
     st.stop()
 
 primary_nav = wf_nav['nav']
-spy_nav = get_spy_nav(primary_nav.index, primary_nav.iloc[0])
+spy_nav     = get_spy_nav(primary_nav.index, primary_nav.iloc[0])
 
 # ── PAGE HEADER ───────────────────────────────────────────────────────────────
 col_h1, col_h2 = st.columns([3, 1])
@@ -383,8 +420,30 @@ with tab1:
     kpi_html += '</div>'
     st.markdown(kpi_html, unsafe_allow_html=True)
 
+    # ── NAV chart with regime overlay ──
     st.markdown('<div class="section-label">Cumulative Growth of $1,000,000</div>', unsafe_allow_html=True)
+
+    show_regime = False
+    if not regime_df.empty:
+        col_tog, col_leg = st.columns([1, 5])
+        with col_tog:
+            show_regime = st.toggle("Regime overlay", value=True)
+        if show_regime:
+            with col_leg:
+                st.markdown("""
+                <div class="regime-legend">
+                  <span><span class="regime-swatch" style="background:rgba(0,196,180,0.45)"></span>BULL</span>
+                  <span><span class="regime-swatch" style="background:rgba(74,144,217,0.40)"></span>RECOVERY</span>
+                  <span><span class="regime-swatch" style="background:rgba(212,160,23,0.45)"></span>BEAR</span>
+                  <span><span class="regime-swatch" style="background:rgba(224,82,82,0.45)"></span>CRISIS</span>
+                </div>
+                """, unsafe_allow_html=True)
+
     fig = go.Figure()
+
+    if show_regime and not regime_df.empty:
+        add_regime_overlay(fig, regime_df, primary_nav.index[0], primary_nav.index[-1])
+
     fig.add_trace(go.Scatter(
         x=primary_nav.index, y=primary_nav,
         name=f"Strategy ({strategy.upper()} {freq})",
@@ -397,7 +456,7 @@ with tab1:
             name="SPY Benchmark",
             line=dict(color=C["benchmark"], width=1.5, dash='dot'),
         ))
-    fig.update_layout(**PLOTLY_BASE, height=380,
+    fig.update_layout(**PLOTLY_BASE, height=400,
                       yaxis=dict(**YAXIS, tickprefix="$", tickformat=","))
     st.plotly_chart(fig, use_container_width=True)
 
@@ -445,7 +504,7 @@ with tab1:
             cmp_df = pd.DataFrame(rows, columns=["Metric", f"{strategy.upper()}-{freq}", "SPY"])
             st.dataframe(cmp_df.set_index("Metric"), use_container_width=True, height=340)
         else:
-            st.info("SPY benchmark not available — check prices.parquet contains SPY data.")
+            st.info("SPY benchmark not available.")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — RISK
@@ -454,6 +513,10 @@ with tab2:
     st.markdown('<div class="section-label">Drawdown Analysis</div>', unsafe_allow_html=True)
     dd_series = (primary_nav / primary_nav.cummax() - 1) * 100
     fig_dd = go.Figure()
+
+    if show_regime and not regime_df.empty:
+        add_regime_overlay(fig_dd, regime_df, primary_nav.index[0], primary_nav.index[-1])
+
     fig_dd.add_trace(go.Scatter(
         x=dd_series.index, y=dd_series,
         fill='tozeroy', fillcolor='rgba(224,82,82,0.15)',
@@ -498,7 +561,7 @@ with tab2:
             line=dict(color=C["strategy"], width=1.5), name="Strategy Vol",
         ))
         if not spy_nav.empty:
-            spy_r = spy_nav.pct_change().dropna()
+            spy_r      = spy_nav.pct_change().dropna()
             spy_roll_v = spy_r.rolling(60).std() * np.sqrt(252) * 100
             fig_rv.add_trace(go.Scatter(
                 x=spy_roll_v.index, y=spy_roll_v,
@@ -509,11 +572,11 @@ with tab2:
 
     if not spy_nav.empty:
         st.markdown('<div class="section-label">Tracking Error vs SPY (Rolling 60-Day)</div>', unsafe_allow_html=True)
-        spy_r = spy_nav.pct_change().dropna()
+        spy_r  = spy_nav.pct_change().dropna()
         common = r.index.intersection(spy_r.index)
         if len(common) > 60:
             active = r.loc[common] - spy_r.loc[common]
-            te = active.rolling(60).std() * np.sqrt(252) * 100
+            te     = active.rolling(60).std() * np.sqrt(252) * 100
             fig_te = go.Figure()
             fig_te.add_hrect(y0=4, y1=6, fillcolor='rgba(212,160,23,0.08)', line_width=0,
                              annotation_text="Target band 4–6%", annotation_position="top left",
@@ -530,7 +593,7 @@ with tab2:
 
     st.markdown('<div class="section-label">Monthly Return Distribution</div>', unsafe_allow_html=True)
     monthly_r = primary_nav.resample('ME').last().pct_change().dropna() * 100
-    fig_hist = go.Figure()
+    fig_hist  = go.Figure()
     fig_hist.add_trace(go.Histogram(x=monthly_r, nbinsx=40, marker_color=C["strategy"], opacity=0.7, name="Strategy"))
     if not spy_nav.empty:
         spy_monthly = spy_nav.resample('ME').last().pct_change().dropna() * 100
@@ -580,7 +643,7 @@ with tab3:
         st.markdown('<div class="section-label">Composite Score of Holdings vs Universe</div>', unsafe_allow_html=True)
         if 'composite_score' in active.columns:
             try:
-                signals_df = load_signals()
+                signals_df   = load_signals()
                 univ_monthly = signals_df.set_index('date').resample('ME')['composite_score'].mean()
                 held_monthly = active.set_index('date').resample('ME')['composite_score'].mean()
                 fig_score = go.Figure()
@@ -595,7 +658,7 @@ with tab3:
 
         if not trades_df.empty:
             st.markdown('<div class="section-label">Monthly Portfolio Turnover ($M)</div>', unsafe_allow_html=True)
-            trades_df['date'] = pd.to_datetime(trades_df['date'])
+            trades_df['date']  = pd.to_datetime(trades_df['date'])
             trades_df['value'] = trades_df['shares'] * trades_df['price']
             monthly_to = trades_df.groupby(pd.Grouper(key='date', freq='ME'))['value'].sum() / 1e6
             fig_to = go.Figure()
@@ -606,7 +669,7 @@ with tab3:
 
         st.markdown('<div class="section-label">Most Frequently Held Stocks</div>', unsafe_allow_html=True)
         top_held = active['ticker'].value_counts().head(25)
-        fig_top = go.Figure(go.Bar(
+        fig_top  = go.Figure(go.Bar(
             x=top_held.index, y=top_held.values,
             marker=dict(color=top_held.values, colorscale=[[0, '#1B6EBE'], [1, '#00C4B4']], showscale=False),
             text=top_held.values, textposition='outside', name="Appearances",
@@ -644,8 +707,8 @@ with tab4:
 
     @st.cache_data(show_spinner=False)
     def compute_ic():
-        sig = load_signals()
-        fwd = load_fwd_returns()
+        sig    = load_signals()
+        fwd    = load_fwd_returns()
         merged = sig.merge(fwd[['ticker', 'date', 'fwd_1m']], on=['ticker', 'date'], how='inner')
         results = []
         for col in SIGNAL_COLS:
@@ -749,8 +812,8 @@ with tab5:
                 m2 = metrics(df['nav'])
                 rows.append({
                     'Window': f"W{w}" if w != 'holdout' else 'Holdout',
-                    'Start': df.index[0].strftime('%Y-%m'),
-                    'End':   df.index[-1].strftime('%Y-%m'),
+                    'Start':  df.index[0].strftime('%Y-%m'),
+                    'End':    df.index[-1].strftime('%Y-%m'),
                     **m2,
                 })
             except Exception:
@@ -818,8 +881,8 @@ with tab5:
         metric_opts = {'Sharpe Ratio': 'sharpe', 'Ann. Return': 'ann_ret',
                        'Max Drawdown': 'max_dd', 'Calmar': 'calmar',
                        'Volatility': 'vol', 'Sortino': 'sortino'}
-        sel = st.selectbox("Compare by", list(metric_opts.keys()))
-        key = metric_opts[sel]
+        sel  = st.selectbox("Compare by", list(metric_opts.keys()))
+        key  = metric_opts[sel]
         scale = 100 if key in ['ann_ret', 'max_dd', 'vol'] else 1
         strat_colors = {'MV-monthly': C["strategy"], 'MV-quarterly': '#007D74',
                         'BL-monthly': C["purple"],   'BL-quarterly': '#4A3080'}
@@ -847,11 +910,9 @@ with tab5:
 # ══════════════════════════════════════════════════════════════════════════════
 with tab6:
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-
     col_a, col_b = st.columns([1, 1], gap="large")
 
     with col_a:
-
         st.markdown("""
         <div class="method-card">
           <div class="method-card-title">What is this system?</div>
@@ -901,14 +962,13 @@ with tab6:
             <li><span class="hl">Trailing stops</span> — if a stock drops more than 2× its recent daily volatility from its recent high, it is automatically sold regardless of the rebalance schedule.</li>
             <li><span class="hl">Drawdown circuit breakers</span> — if the portfolio drops 10%, 15%, or 20% from peak, the system automatically reduces exposure and tightens position limits until it recovers.</li>
             <li><span class="hl">Sector neutrality</span> — the portfolio is kept balanced across sectors so it cannot accidentally become a pure tech or pure energy bet.</li>
-            <li><span class="hl">Regime detection</span> — the system monitors VIX and yield curve data daily to classify the market as bull, bear, recovery, or crisis, and adjusts rebalance frequency accordingly.</li>
+            <li><span class="hl">Regime detection</span> — the system monitors VIX, yield curve, and credit spread data daily to classify the market as bull, bear, recovery, or crisis, and adjusts rebalance frequency accordingly. Regime states are shown as shaded overlays on the NAV chart.</li>
             <li><span class="hl">Tracking error cap</span> — the optimizer is constrained to stay within 6% tracking error of SPY, preventing extreme divergence from the benchmark.</li>
           </ul>
         </div>
         """, unsafe_allow_html=True)
 
     with col_b:
-
         st.markdown("""
         <div class="method-card">
           <div class="method-card-title">How was the backtest run?</div>
@@ -948,6 +1008,24 @@ with tab6:
 
         st.markdown("""
         <div class="method-card">
+          <div class="method-card-title">Regime detection methodology</div>
+          <p>Regime states are reconstructed point-in-time using only data available on each date — no lookahead bias. Two layers combine into one of four composite states:</p>
+          <ul>
+            <li><span class="teal">L1 — Market stress (daily)</span>: VIX vs its 252-day average + market breadth (% of S&P 500 constituents above 200d MA, point-in-time membership)</li>
+            <li><span class="teal">L2 — Economic cycle (weekly)</span>: 10Y-2Y yield curve slope + HY credit spread direction</li>
+          </ul>
+          <br>
+          <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:4px">
+            <span style="font-family:'IBM Plex Mono'; font-size:11px; padding:4px 10px; border-radius:4px; background:rgba(0,196,180,0.15); color:#00C4B4">BULL — low stress + expansion</span>
+            <span style="font-family:'IBM Plex Mono'; font-size:11px; padding:4px 10px; border-radius:4px; background:rgba(74,144,217,0.15); color:#4A90D9">RECOVERY — mixed signals</span>
+            <span style="font-family:'IBM Plex Mono'; font-size:11px; padding:4px 10px; border-radius:4px; background:rgba(212,160,23,0.15); color:#D4A017">BEAR — elevated + contraction</span>
+            <span style="font-family:'IBM Plex Mono'; font-size:11px; padding:4px 10px; border-radius:4px; background:rgba(224,82,82,0.15); color:#E05252">CRISIS — extreme stress</span>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="method-card">
           <div class="method-card-title">What are the honest limitations?</div>
           <div class="honesty-box">
             <p><strong>Transaction costs are estimated, not exact.</strong> We model a 10bps round-trip cost per trade. Real costs depend on market impact and timing.</p>
@@ -969,7 +1047,7 @@ with tab6:
           <div class="method-card-title">Data sources</div>
           <ul>
             <li><span class="hl">Price & fundamental data</span> — Financial Modeling Prep (FMP) Premium, 30+ years of history, quarterly financials for all S&P 500 stocks</li>
-            <li><span class="hl">Macro regime data</span> — FRED (Federal Reserve) for VIX, yield curve (10Y–2Y), and credit spreads</li>
+            <li><span class="hl">Macro regime data</span> — FRED (Federal Reserve) for VIX, yield curve (10Y–2Y), and credit spreads. Full history from 2007 fetched for point-in-time regime reconstruction.</li>
             <li><span class="hl">Execution</span> — Alpaca paper trading API for order submission and fill confirmation</li>
             <li><span class="hl">Universe</span> — S&P 500 constituents with point-in-time historical membership to avoid survivorship bias</li>
           </ul>
