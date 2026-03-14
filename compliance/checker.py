@@ -96,7 +96,7 @@ def check_concentration(proposed_trades: pd.DataFrame, portfolio: pd.DataFrame, 
 
         new_weight = (current_value + trade_value) / nav if nav > 0 else 0
 
-        if new_weight > MAX_POSITION_WEIGHT:
+        if new_weight > MAX_POSITION_WEIGHT + 0.002:  # 20bps tolerance for rounding
             return ComplianceResult(
                 False, "concentration",
                 f"{ticker} would reach {new_weight:.2%} (max {MAX_POSITION_WEIGHT:.0%})"

@@ -156,8 +156,7 @@ def confirm_fills(submitted_orders: pd.DataFrame) -> pd.DataFrame:
 def update_portfolio_from_fills(fills: pd.DataFrame) -> None:
     """
     Updates internal portfolio ledger from confirmed fills.
-    Adjusts shares, cost basis, market value, and cash balance.
-    Alpaca is ground truth — any discrepancy is reconciled here.
+    Preserves stop_reference_price on all position updates — never resets it.
     """
     if fills.empty:
         return
@@ -185,19 +184,18 @@ def update_portfolio_from_fills(fills: pd.DataFrame) -> None:
 
         if side == "buy":
             if ticker in portfolio["ticker"].values:
-                # Add to existing position
                 idx = portfolio[portfolio["ticker"] == ticker].index[0]
                 existing_shares = float(portfolio.at[idx, "shares"])
                 existing_cost   = float(portfolio.at[idx, "cost_basis"])
+                new_shares      = existing_shares + shares
+                new_cost        = (existing_cost * existing_shares + fill_value) / new_shares
 
-                new_shares    = existing_shares + shares
-                new_cost      = (existing_cost * existing_shares + fill_value) / new_shares
-
-                portfolio.at[idx, "shares"]      = new_shares
-                portfolio.at[idx, "cost_basis"]  = new_cost
+                portfolio.at[idx, "shares"]       = new_shares
+                portfolio.at[idx, "cost_basis"]   = new_cost
                 portfolio.at[idx, "market_value"] = new_shares * fill_price
+                # stop_reference_price intentionally NOT touched —
+                # compute_trailing_stops will ratchet it up if price has risen
             else:
-                # New position
                 new_row = {
                     "ticker":               ticker,
                     "shares":               shares,
@@ -206,7 +204,7 @@ def update_portfolio_from_fills(fills: pd.DataFrame) -> None:
                     "entry_date":           date.today(),
                     "entry_price":          fill_price,
                     "unrealized_pnl":       0.0,
-                    "stop_reference_price": fill_price,
+                    "stop_reference_price": fill_price,  # entry price is correct initial anchor
                     "stop_price":           None
                 }
                 portfolio = pd.concat([portfolio, pd.DataFrame([new_row])], ignore_index=True)
@@ -222,8 +220,7 @@ def update_portfolio_from_fills(fills: pd.DataFrame) -> None:
             existing_shares = float(portfolio.at[idx, "shares"])
             new_shares      = existing_shares - shares
 
-            if new_shares <= 0:
-                # Full exit — remove position
+            if new_shares <= 0.5:  # full exit with float tolerance
                 portfolio = portfolio[portfolio["ticker"] != ticker].reset_index(drop=True)
                 print(f"[execution] Position closed: {ticker}")
             else:
@@ -235,17 +232,18 @@ def update_portfolio_from_fills(fills: pd.DataFrame) -> None:
     save_portfolio(portfolio)
     print(f"[execution] Portfolio updated: {len(portfolio)} positions")
 
-
 # ------------------------------------------------------------
 # RECONCILIATION
 # ------------------------------------------------------------
 
 def reconcile_with_alpaca() -> pd.DataFrame:
     """
-    Single-tier reconciliation: Alpaca is ground truth.
-    Fetches all positions from Alpaca, compares with internal ledger.
-    Updates internal ledger to match. Flags discrepancies > 1% NAV.
+    Single-tier reconciliation: Alpaca is ground truth for shares and market value.
+    NEVER resets stop_reference_price, entry_date, or entry_price for existing positions.
+    For positions found only in Alpaca (not internal), reconstructs stop anchor from prices.
     """
+    from data.storage import load_prices
+
     client    = _get_alpaca_client()
     portfolio = load_portfolio()
 
@@ -256,9 +254,9 @@ def reconcile_with_alpaca() -> pd.DataFrame:
         return pd.DataFrame()
 
     alpaca_df = pd.DataFrame([{
-        "ticker":       p.symbol,
-        "shares":       float(p.qty),
-        "market_value": float(p.market_value),
+        "ticker":        p.symbol,
+        "shares":        float(p.qty),
+        "market_value":  float(p.market_value),
         "current_price": float(p.current_price)
     } for p in alpaca_positions])
 
@@ -266,41 +264,58 @@ def reconcile_with_alpaca() -> pd.DataFrame:
         print("[execution] Reconciliation clean: no positions on either side")
         return pd.DataFrame()
 
-    # Compare
     if not portfolio.empty and not alpaca_df.empty:
-        merged = portfolio.merge(alpaca_df, on="ticker", how="outer", suffixes=("_internal", "_alpaca"))
+        merged = portfolio.merge(
+            alpaca_df, on="ticker", how="outer", suffixes=("_internal", "_alpaca")
+        )
         discrepancies = merged[
             (merged["shares_internal"] - merged["shares_alpaca"]).abs() > 0.5
         ]
-
         if not discrepancies.empty:
-            print(f"[execution] Reconciliation discrepancies found: {discrepancies['ticker'].tolist()}")
+            print(f"[execution] Reconciliation discrepancies: {discrepancies['ticker'].tolist()}")
             notify(
                 f"Reconciliation discrepancies: {discrepancies['ticker'].tolist()}",
                 level="warning"
             )
 
-    # Alpaca is ground truth — update internal ledger
     if not alpaca_df.empty:
+        prices = load_prices()
+
         for _, pos in alpaca_df.iterrows():
             ticker = pos["ticker"]
+
             if not portfolio.empty and ticker in portfolio["ticker"].values:
+                # Existing position — update ONLY shares and market_value
+                # Never touch stop_reference_price, entry_date, entry_price
                 idx = portfolio[portfolio["ticker"] == ticker].index[0]
                 portfolio.at[idx, "shares"]       = pos["shares"]
                 portfolio.at[idx, "market_value"] = pos["market_value"]
+
             else:
+                # Position exists in Alpaca but not internally (manual trade or missed fill)
+                # Reconstruct stop anchor from price history rather than using today's price
+                entry_date = date.today()
+                stop_ref   = pos["current_price"]  # fallback
+
+                if not prices.empty and ticker in prices["ticker"].values:
+                    ticker_prices = prices[prices["ticker"] == ticker].sort_values("date")
+                    if not ticker_prices.empty:
+                        # Use max close in the last 252 days as best available anchor
+                        stop_ref = float(ticker_prices["close"].tail(252).max())
+
                 new_row = {
                     "ticker":               ticker,
                     "shares":               pos["shares"],
                     "cost_basis":           pos["current_price"],
                     "market_value":         pos["market_value"],
-                    "entry_date":           date.today(),
+                    "entry_date":           entry_date,
                     "entry_price":          pos["current_price"],
                     "unrealized_pnl":       0.0,
-                    "stop_reference_price": pos["current_price"],
+                    "stop_reference_price": stop_ref,
                     "stop_price":           None
                 }
                 portfolio = pd.concat([portfolio, pd.DataFrame([new_row])], ignore_index=True)
+                print(f"[execution] Reconciliation added missing position: {ticker} stop_ref={stop_ref:.2f}")
 
         save_portfolio(portfolio)
 

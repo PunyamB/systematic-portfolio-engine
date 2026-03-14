@@ -147,13 +147,19 @@ def run_data_refresh(
 
     # ----------------------------------------------------------
     # STEP 5 — MACRO / REGIME DATA (DAILY)
-    # Lightweight FRED fetch — always runs.
+    # Backfills 1 year of history if insufficient rows stored.
     # ----------------------------------------------------------
     print("[pipeline_data] Fetching macro data from FRED")
-    regime_data = get_all_regime_data(
-        (run_date - timedelta(days=30)).strftime("%Y-%m-%d"),  # 30-day window sufficient for daily update
-        end_date
-    )
+
+    from data.storage import load_regime_data
+    vix_stored = load_regime_data("vix")
+    if vix_stored.empty or len(vix_stored) < 252:
+        print("[pipeline_data] VIX history insufficient — backfilling 1 year")
+        regime_start = (run_date - timedelta(days=365)).strftime("%Y-%m-%d")
+    else:
+        regime_start = (run_date - timedelta(days=30)).strftime("%Y-%m-%d")
+
+    regime_data = get_all_regime_data(regime_start, end_date)
 
     for key, df in regime_data.items():
         if df.empty:

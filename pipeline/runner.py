@@ -13,10 +13,11 @@
 # 6. Risk monitoring (circuit breaker, trailing stops, drift)
 # 7. Signal computation (daily)
 # 8. Signal decay tracking (between rebalances)
-# 9. [REBALANCE ONLY] Optimizer
+# 9. [REBALANCE ONLY] Optimizer + stop/trade deduplication
 # 10. [REBALANCE ONLY] Write proposed_trades.csv + Slack notification
 # 11. Portfolio history snapshot
 # 12. Decision log + pipeline health
+# 13. Action summary — stop losses + proposed trades printed to terminal
 
 import json
 import time
@@ -40,15 +41,17 @@ from data.storage import (
     clear_cache, save_snapshot, append_decision_log,
     append_portfolio_history, append_pipeline_history,
     load_portfolio, load_prices, save_parquet,
+    save_stop_exits,
 )
 from fund_accounting.nav import load_nav_history
 
 cfg = get_config()
 
-HEALTH_FILE       = Path("logs/pipeline_health.json")
-PROPOSED_DIR      = Path("data/proposed")
-APPROVED_DIR      = Path("data/approved")
-FLAG_FILE         = Path("pipeline_running.flag")
+HEALTH_FILE  = Path("logs/pipeline_health.json")
+PROPOSED_DIR = Path("data/proposed")
+APPROVED_DIR = Path("data/approved")
+STOPS_DIR    = Path("data/stops")
+FLAG_FILE    = Path("pipeline_running.flag")
 
 
 # ------------------------------------------------------------
@@ -75,13 +78,13 @@ def _release_lock():
 
 class PipelineHealth:
     def __init__(self, run_date: date):
-        self.run_date  = run_date
-        self.stages    = {}
+        self.run_date   = run_date
+        self.stages     = {}
         self.start_time = time.time()
 
     def record(self, stage: str, status: str, duration_sec: float, detail: str = ""):
         self.stages[stage] = {
-            "status":       status,   # success / failed / skipped
+            "status":       status,
             "duration_sec": round(duration_sec, 2),
             "detail":       detail,
         }
@@ -92,20 +95,18 @@ class PipelineHealth:
         HEALTH_FILE.parent.mkdir(parents=True, exist_ok=True)
         total_sec = round(time.time() - self.start_time, 2)
         payload = {
-            "run_date":         str(self.run_date),
-            "run_at":           datetime.now().isoformat(),
-            "total_sec":        total_sec,
-            "stages":           self.stages,
-        }
-        # JSON for dashboard current-state read
-        with open(HEALTH_FILE, "w") as f:
-            json.dump(payload, f, indent=2)
-        # Parquet for history
-        append_pipeline_history({
             "run_date":  str(self.run_date),
             "run_at":    datetime.now().isoformat(),
             "total_sec": total_sec,
-            "status":    "success" if not any(
+            "stages":    self.stages,
+        }
+        with open(HEALTH_FILE, "w") as f:
+            json.dump(payload, f, indent=2)
+        append_pipeline_history({
+            "run_date":    str(self.run_date),
+            "run_at":      datetime.now().isoformat(),
+            "total_sec":   total_sec,
+            "status":      "success" if not any(
                 v["status"] == "failed" for v in self.stages.values()
             ) else "failed",
             "stages_json": json.dumps(self.stages),
@@ -166,11 +167,53 @@ def _reprice_portfolio(run_date: date) -> None:
             - portfolio.loc[mask, "shares"] * portfolio.loc[mask, "cost_basis"]
         )
 
-    # Drop the temp column
-    portfolio = portfolio.drop(columns=[c for c in portfolio.columns if c.endswith("_latest")], errors="ignore")
+    portfolio = portfolio.drop(
+        columns=[c for c in portfolio.columns if c.endswith("_latest")],
+        errors="ignore"
+    )
 
     from data.storage import save_portfolio
     save_portfolio(portfolio)
+
+
+# ------------------------------------------------------------
+# STOP / TRADE DEDUPLICATION
+# ------------------------------------------------------------
+
+def _reconcile_stops_and_trades(stop_exits: list, target_weights) -> tuple:
+    """
+    Removes overlap between stop exits and optimizer target weights.
+
+    For any ticker in BOTH stop_exits AND target_weights:
+    - Remove from stop_exits — the proposed trade already handles the net move
+      (current weight → target weight in one order, no sell-then-rebuy)
+    - Keep in proposed trades as-is
+
+    For tickers in stop_exits but NOT in target_weights:
+    - Keep in stop_exits — full exit, no rebuy intended
+
+    Returns:
+        clean_stops:   list of tickers to execute as stop exits (no overlap)
+        logged_merged: list of tickers that were merged into proposed trades
+    """
+    if not stop_exits or target_weights is None or target_weights.empty:
+        return stop_exits, []
+
+    target_tickers = set(target_weights["ticker"].tolist())
+    clean_stops    = []
+    logged_merged  = []
+
+    for ticker in stop_exits:
+        if ticker in target_tickers:
+            logged_merged.append(ticker)
+        else:
+            clean_stops.append(ticker)
+
+    if logged_merged:
+        print(f"[runner] Stop/trade merge: {logged_merged} absorbed into proposed trades "
+              f"(net trade handles the position adjustment — no sell-then-rebuy)")
+
+    return clean_stops, logged_merged
 
 
 # ------------------------------------------------------------
@@ -188,7 +231,6 @@ def write_proposed_trades(target_weights, run_date: date, regime: str) -> Path:
     PROPOSED_DIR.mkdir(parents=True, exist_ok=True)
     APPROVED_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Save target weights for drift detection on subsequent days
     target_path = Path("data/processed/target_weights.parquet")
     target_weights.to_parquet(target_path, index=False)
 
@@ -196,21 +238,19 @@ def write_proposed_trades(target_weights, run_date: date, regime: str) -> Path:
     nav         = float(nav_history.iloc[-1]["nav"]) if not nav_history.empty else cfg["portfolio"]["initial_capital"]
     portfolio   = load_portfolio()
 
-    # Current weights
     current_weights = {}
     if not portfolio.empty:
         for _, row in portfolio.iterrows():
             current_weights[row["ticker"]] = row["market_value"] / nav if nav > 0 else 0
 
-    # Build trade list
     trades = []
     for _, row in target_weights.iterrows():
-        ticker         = row["ticker"]
-        target_wt      = row["target_weight"]
-        current_wt     = current_weights.get(ticker, 0.0)
-        delta_wt       = target_wt - current_wt
-        trade_value    = delta_wt * nav
-        direction      = "BUY" if delta_wt > 0 else "SELL"
+        ticker      = row["ticker"]
+        target_wt   = row["target_weight"]
+        current_wt  = current_weights.get(ticker, 0.0)
+        delta_wt    = target_wt - current_wt
+        trade_value = delta_wt * nav
+        direction   = "BUY" if delta_wt > 0 else "SELL"
 
         if abs(delta_wt) < 0.001:
             continue
@@ -227,10 +267,10 @@ def write_proposed_trades(target_weights, run_date: date, regime: str) -> Path:
             "run_date":        str(run_date),
         })
 
-    # Add full exits for tickers no longer in target
     target_tickers = set(target_weights["ticker"].tolist())
+    already_traded = set(t["ticker"] for t in trades)
     for ticker, current_wt in current_weights.items():
-        if ticker not in target_tickers and current_wt > 0.001:
+        if ticker not in target_tickers and ticker not in already_traded and current_wt > 0.001:
             trades.append({
                 "ticker":          ticker,
                 "direction":       "SELL",
@@ -247,12 +287,12 @@ def write_proposed_trades(target_weights, run_date: date, regime: str) -> Path:
         print("[runner] No trades above threshold — skipping proposed trades file")
         return None
 
-    df        = pd.DataFrame(trades)
-    out_path  = PROPOSED_DIR / f"proposed_trades_{run_date}.csv"
+    df       = pd.DataFrame(trades)
+    out_path = PROPOSED_DIR / f"proposed_trades_{run_date}.csv"
     df.to_csv(out_path, index=False)
 
-    n_buys  = len(df[df["direction"] == "BUY"])
-    n_sells = len(df[df["direction"] == "SELL"])
+    n_buys         = len(df[df["direction"] == "BUY"])
+    n_sells        = len(df[df["direction"] == "SELL"])
     total_turnover = df["trade_value_usd"].abs().sum()
 
     print(f"[runner] Proposed trades written: {len(df)} trades | "
@@ -272,6 +312,81 @@ def write_proposed_trades(target_weights, run_date: date, regime: str) -> Path:
 
 
 # ------------------------------------------------------------
+# ACTION SUMMARY
+# ------------------------------------------------------------
+
+def _print_action_summary(run_date: date) -> None:
+    """
+    Prints a clean action summary at the end of every pipeline run.
+    Shows triggered stop losses and proposed trades with next steps.
+    """
+    import pandas as pd
+
+    portfolio = load_portfolio()
+    prices    = load_prices()
+
+    print("\n" + "=" * 62)
+    print("  ACTION SUMMARY")
+    print("=" * 62)
+
+    # ── Stop losses ──
+    stop_file = STOPS_DIR / f"{run_date.strftime('%Y%m%d')}_stop_exits.csv"
+    if stop_file.exists():
+        stops = pd.read_csv(stop_file)["ticker"].tolist()
+        if stops and not portfolio.empty and not prices.empty:
+            latest = (
+                prices.sort_values("date")
+                .groupby("ticker").last()
+                .reset_index()[["ticker", "close"]]
+            )
+            pf        = portfolio.merge(latest, on="ticker", how="left", suffixes=("", "_latest"))
+            close_col = "close_latest" if "close_latest" in pf.columns else "close"
+
+            print(f"\n  STOP LOSSES — {len(stops)} positions triggered")
+            print(f"  {'Ticker':<8} {'Close':>8} {'Stop':>8} {'% Below':>9}")
+            print(f"  {'-'*8} {'-'*8} {'-'*8} {'-'*9}")
+            for ticker in stops:
+                row = pf[pf["ticker"] == ticker]
+                if row.empty:
+                    continue
+                close     = float(row[close_col].values[0])
+                stop      = float(row["stop_price"].values[0])
+                pct_below = (stop - close) / stop * 100
+                print(f"  {ticker:<8} {close:>8.2f} {stop:>8.2f} {pct_below:>8.1f}%")
+
+            print(f"\n  → Run: python -m execution.execute_stops")
+        elif stops:
+            print(f"\n  STOP LOSSES: {stops}")
+            print(f"  → Run: python -m execution.execute_stops")
+        else:
+            print("\n  STOP LOSSES:     none triggered")
+    else:
+        print("\n  STOP LOSSES:     none triggered")
+
+    # ── Proposed trades ──
+    proposed_file = PROPOSED_DIR / f"proposed_trades_{run_date}.csv"
+    if proposed_file.exists():
+        trades   = pd.read_csv(proposed_file)
+        n_buys   = len(trades[trades["direction"] == "BUY"])
+        n_sells  = len(trades[trades["direction"] == "SELL"])
+        turnover = trades["trade_value_usd"].abs().sum()
+
+        print(f"\n  PROPOSED TRADES — {len(trades)} trades "
+              f"({n_buys} buys, {n_sells} sells) | turnover ${turnover:,.0f}")
+        print(f"  {'Ticker':<8} {'Dir':<5} {'Cur Wt':>8} {'Tgt Wt':>8} {'Value ($)':>12}")
+        print(f"  {'-'*8} {'-'*5} {'-'*8} {'-'*8} {'-'*12}")
+        for _, row in trades.iterrows():
+            print(f"  {row['ticker']:<8} {row['direction']:<5} "
+                  f"{row['current_weight']:>7.2%} {row['target_weight']:>7.2%} "
+                  f"{row['trade_value_usd']:>12,.0f}")
+        print(f"\n  → Run: python approve.py   then   python execute.py")
+    else:
+        print("\n  PROPOSED TRADES: none")
+
+    print("\n" + "=" * 62 + "\n")
+
+
+# ------------------------------------------------------------
 # MAIN PIPELINE
 # ------------------------------------------------------------
 
@@ -284,7 +399,6 @@ def run_pipeline(run_date: date = None, force_rebalance: bool = False) -> dict:
     if run_date is None:
         run_date = date.today()
 
-    # Acquire lock
     if not _acquire_lock():
         return {"status": "aborted", "reason": "already_running"}
 
@@ -297,17 +411,15 @@ def run_pipeline(run_date: date = None, force_rebalance: bool = False) -> dict:
 def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
     """Inner pipeline logic — lock is held by caller."""
 
-    # Clear data cache at start of each run
     clear_cache()
 
     health    = PipelineHealth(run_date)
     rebalance = is_rebalance_day(run_date) or force_rebalance
 
-    # Collector for decision log
     decision = {
-        "date":             str(run_date),
-        "run_at":           datetime.now().isoformat(),
-        "rebalance_day":    rebalance,
+        "date":          str(run_date),
+        "run_at":        datetime.now().isoformat(),
+        "rebalance_day": rebalance,
     }
 
     print(f"\n[runner] ============================================================")
@@ -345,20 +457,19 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
     _run_stage(health, "reprice", _reprice_portfolio, run_date)
     nav_result = _run_stage(health, "nav", run_nav, run_date)
 
-    nav_val = cfg["portfolio"]["initial_capital"]
+    nav_val      = cfg["portfolio"]["initial_capital"]
     daily_return = 0.0
     if nav_result:
-        nav_val = nav_result.get("nav", nav_val)
+        nav_val      = nav_result.get("nav", nav_val)
         daily_return = nav_result.get("daily_return", 0.0)
-    decision["nav"] = nav_val
+    decision["nav"]          = nav_val
     decision["daily_return"] = daily_return
-    decision["cash"] = nav_result.get("cash", 0.0) if nav_result else 0.0
+    decision["cash"]         = nav_result.get("cash", 0.0) if nav_result else 0.0
 
     # ----------------------------------------------------------
     # STAGE 5 — Regime detection
     # ----------------------------------------------------------
     regime_result = _run_stage(health, "regime", detect_regime, run_date)
-    # FIX: detector returns "composite", not "composite_regime"
     regime = regime_result.get("composite", "recovery") if regime_result else "recovery"
     print(f"[runner] Regime: {regime}")
 
@@ -370,31 +481,28 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
         decision["vix_ratio"]    = regime_result.get("vix_ratio")
         decision["breadth"]      = regime_result.get("breadth")
         decision["yield_spread"] = regime_result.get("yield_spread")
-        # Save regime snapshot
         save_snapshot(regime_result, "regime", run_date)
 
     # ----------------------------------------------------------
     # STAGE 6 — Risk monitoring
     # ----------------------------------------------------------
-    risk_result = _run_stage(health, "risk_monitor", run_risk_monitor, run_date)
-
-    priority_trades = []
-    drift_trigger   = False
+    risk_result   = _run_stage(health, "risk_monitor", run_risk_monitor, run_date)
+    stop_exits    = []
+    drift_trigger = False
 
     if risk_result:
         circuit_breaker = risk_result.get("circuit_breaker", {})
         stop_exits      = risk_result.get("stop_exits", [])
-        drift_result    = risk_result.get("drift", {})
+        drift_result_d  = risk_result.get("drift", {})
+        cb_level        = circuit_breaker.get("tier", 0)
 
-        cb_level = circuit_breaker.get("tier", 0)
         if cb_level >= 1:
             print(f"[runner] Circuit breaker T{cb_level} active")
 
         if stop_exits:
-            print(f"[runner] Trailing stop exits: {stop_exits}")
-            priority_trades.extend(stop_exits)
+            print(f"[runner] Trailing stop exits (pre-dedup): {stop_exits}")
 
-        if drift_result.get("triggered"):
+        if drift_result_d.get("triggered"):
             drift_trigger = True
             print(f"[runner] Drift trigger detected — interim rebalance needed")
 
@@ -402,24 +510,21 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
         decision["drawdown"]       = risk_result.get("drawdown", 0.0)
         decision["beta"]           = risk_result.get("beta", 1.0)
         decision["tracking_error"] = risk_result.get("tracking_error", 0.0)
-        decision["stop_exits"]     = ",".join(stop_exits) if stop_exits else ""
 
-        # Save risk snapshot
         save_snapshot({
-            "date": str(run_date),
-            "cb_tier": cb_level,
-            "drawdown": risk_result.get("drawdown", 0.0),
-            "beta": risk_result.get("beta", 1.0),
+            "date":           str(run_date),
+            "cb_tier":        cb_level,
+            "drawdown":       risk_result.get("drawdown", 0.0),
+            "beta":           risk_result.get("beta", 1.0),
             "tracking_error": risk_result.get("tracking_error", 0.0),
-            "te_breach": risk_result.get("te_breach", False),
-            "stop_exits": ",".join(stop_exits),
+            "te_breach":      risk_result.get("te_breach", False),
+            "stop_exits":     ",".join(stop_exits),
         }, "risk", run_date)
 
     # ----------------------------------------------------------
     # STAGE 7 — Signal computation
     # ----------------------------------------------------------
     signals = _run_stage(health, "signals", run_combiner, run_date, regime)
-
     if signals is not None and not signals.empty:
         save_snapshot(signals, "signals", run_date)
         decision["n_signals_scored"] = len(signals)
@@ -429,15 +534,14 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
     # ----------------------------------------------------------
     decay_result  = _run_stage(health, "decay_tracker", run_decay_tracker, run_date)
     decay_trigger = False
-
     if decay_result and decay_result.get("triggered"):
         decay_trigger = True
         print(f"[runner] Signal decay trigger — interim rebalance needed")
 
     # ----------------------------------------------------------
-    # STAGE 9 — Optimizer (rebalance days + drift/decay triggers)
+    # STAGE 9 — Optimizer + stop/trade deduplication
     # ----------------------------------------------------------
-    run_optimizer_flag = rebalance or drift_trigger or decay_trigger
+    run_optimizer_flag        = rebalance or drift_trigger or decay_trigger
     decision["optimizer_ran"] = run_optimizer_flag
 
     if run_optimizer_flag:
@@ -452,20 +556,43 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
         if target_weights is not None and not target_weights.empty:
             decision["n_positions"] = len(target_weights)
             decision["max_weight"]  = round(float(target_weights["target_weight"].max()), 4)
-
             save_snapshot(target_weights, "optimizer", run_date)
 
-            # ----------------------------------------------------------
-            # STAGE 10 — Write proposed trades
-            # ----------------------------------------------------------
+            # Dedup: remove overlapping tickers from stop exits
+            # Those tickers are handled by the net trade in proposed trades
+            clean_stops, merged = _reconcile_stops_and_trades(stop_exits, target_weights)
+
+            if stop_exits:
+                # Write only the clean (non-overlapping) stops to file
+                save_stop_exits(clean_stops, run_date)
+                if clean_stops:
+                    print(f"[runner] Stop exits (after dedup): {clean_stops}")
+                if merged:
+                    print(f"[runner] Merged into proposed trades: {merged}")
+
+            decision["stop_exits"]        = ",".join(clean_stops) if clean_stops else ""
+            decision["stop_exits_merged"] = ",".join(merged) if merged else ""
+
+            # Stage 10 — Write proposed trades
             proposed_path = _run_stage(
                 health, "proposed_trades",
                 write_proposed_trades, target_weights, run_date, regime
             )
             decision["proposed_trades_file"] = str(proposed_path) if proposed_path else ""
+
         else:
+            # No optimizer output — write stops as-is, no dedup possible
+            if stop_exits:
+                save_stop_exits(stop_exits, run_date)
+                decision["stop_exits"] = ",".join(stop_exits)
             health.record("proposed_trades", "skipped", 0, "optimizer returned empty")
+
     else:
+        # Non-rebalance day — write stops directly, no optimizer to dedup against
+        if stop_exits:
+            save_stop_exits(stop_exits, run_date)
+            decision["stop_exits"] = ",".join(stop_exits)
+
         next_rebalance = get_next_rebalance_date(run_date)
         print(f"[runner] Non-rebalance day — skipping optimizer | next rebalance: {next_rebalance}")
         health.record("optimizer",       "skipped", 0, f"next rebalance: {next_rebalance}")
@@ -475,8 +602,8 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
     # ----------------------------------------------------------
     # STAGE 11 — Portfolio history snapshot
     # ----------------------------------------------------------
-    portfolio = load_portfolio()
-    nav_history = load_nav_history()
+    portfolio       = load_portfolio()
+    nav_history     = load_nav_history()
     nav_for_weights = float(nav_history.iloc[-1]["nav"]) if not nav_history.empty else nav_val
 
     portfolio_snap = portfolio.copy() if not portfolio.empty else portfolio
@@ -486,17 +613,16 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
     decision["n_held_positions"] = len(portfolio) if not portfolio.empty else 0
 
     # ----------------------------------------------------------
-    # FINAL — Health report + decision log + summary Slack
+    # FINAL — Health + decision log + Slack summary
     # ----------------------------------------------------------
     health.save()
 
-    failed_stages = [s for s, v in health.stages.items() if v["status"] == "failed"]
-    status        = "failed" if failed_stages else "success"
-    decision["status"] = status
+    failed_stages             = [s for s, v in health.stages.items() if v["status"] == "failed"]
+    status                    = "failed" if failed_stages else "success"
+    decision["status"]        = status
     decision["failed_stages"] = ",".join(failed_stages) if failed_stages else ""
-    decision["total_sec"] = round(time.time() - health.start_time, 2)
+    decision["total_sec"]     = round(time.time() - health.start_time, 2)
 
-    # Write decision log
     append_decision_log(decision)
 
     notify(
@@ -512,7 +638,10 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
 
     print(f"\n[runner] ============================================================")
     print(f"[runner] Pipeline complete: {status} | {round(time.time() - health.start_time, 1)}s")
-    print(f"[runner] ============================================================\n")
+    print(f"[runner] ============================================================")
+
+    # Print action summary — what to run next
+    _print_action_summary(run_date)
 
     return {
         "status":    status,

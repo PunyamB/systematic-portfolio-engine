@@ -110,8 +110,8 @@ def compute_trailing_stops(prices: pd.DataFrame, portfolio: pd.DataFrame) -> pd.
     """
     Computes vol-adjusted trailing stop price for each held position.
     Stop distance = max(FLOOR, min(CAP, MULTIPLIER * 25d rolling vol))
-    Stop price    = recent_high * (1 - stop_distance)
-    Updates portfolio with stop_price and stop_reference_price columns.
+    Reference price = highest close since entry date (ratchets up only, never down).
+    Stop price = reference_price * (1 - stop_distance)
     """
     if portfolio.empty or prices.empty:
         return portfolio
@@ -119,9 +119,9 @@ def compute_trailing_stops(prices: pd.DataFrame, portfolio: pd.DataFrame) -> pd.
     portfolio = portfolio.copy()
 
     if "stop_reference_price" not in portfolio.columns:
-        portfolio["stop_reference_price"] = None
+        portfolio["stop_reference_price"] = np.nan
     if "stop_price" not in portfolio.columns:
-        portfolio["stop_price"] = None
+        portfolio["stop_price"] = np.nan
 
     for idx, row in portfolio.iterrows():
         ticker = row["ticker"]
@@ -130,33 +130,42 @@ def compute_trailing_stops(prices: pd.DataFrame, portfolio: pd.DataFrame) -> pd.
         if len(ticker_prices) < STOP_VOL_LOOKBACK:
             continue
 
-        # Compute 25-day rolling vol (annualized daily returns std)
+        # Vol: 25-day rolling std of daily returns (annualized not needed — raw daily vol)
         returns = ticker_prices["close"].pct_change().dropna()
         vol_25d = float(returns.tail(STOP_VOL_LOOKBACK).std())
+        stop_distance = max(STOP_FLOOR, min(STOP_CAP, STOP_MULTIPLIER * vol_25d))
 
-        # Stop distance: multiplier * vol, floored and capped
-        stop_distance = STOP_MULTIPLIER * vol_25d
-        stop_distance = max(STOP_FLOOR, min(STOP_CAP, stop_distance))
+        # True high since entry — anchor to entry_date, not a rolling window
+        entry_date = row.get("entry_date", None)
+        if pd.notna(entry_date):
+            prices_since_entry = ticker_prices[
+                ticker_prices["date"] >= pd.Timestamp(entry_date)
+            ]
+        else:
+            prices_since_entry = ticker_prices
 
-        # Recent high — use entry price if no reference stored
-        recent_high = float(ticker_prices["close"].tail(STOP_VOL_LOOKBACK).max())
-        if pd.notna(row["stop_reference_price"]):
-            recent_high = max(recent_high, float(row["stop_reference_price"]))
+        true_high = float(prices_since_entry["close"].max()) \
+                    if not prices_since_entry.empty \
+                    else float(ticker_prices["close"].iloc[-1])
 
-        stop_price = recent_high * (1 - stop_distance)
+        # Ratchet: reference price only ever moves up
+        stored_ref = row["stop_reference_price"]
+        new_reference = max(true_high, float(stored_ref)) if pd.notna(stored_ref) else true_high
 
-        portfolio.at[idx, "stop_reference_price"] = recent_high
-        portfolio.at[idx, "stop_price"]           = stop_price
+        portfolio.at[idx, "stop_reference_price"] = new_reference
+        portfolio.at[idx, "stop_price"]           = new_reference * (1 - stop_distance)
 
     return portfolio
-
 
 def check_trailing_stops(prices: pd.DataFrame) -> pd.DataFrame:
     """
     Evaluates trailing stops EOD against current close prices.
+    Skips positions opened today — need at least 1 day of seasoning.
     Returns DataFrame of tickers that have breached their stop price.
     These are P2 priority trades — executed next market open.
     """
+    from datetime import date as date_type
+
     portfolio = load_portfolio()
     if portfolio.empty:
         return pd.DataFrame()
@@ -167,6 +176,20 @@ def check_trailing_stops(prices: pd.DataFrame) -> pd.DataFrame:
     if "stop_price" not in portfolio.columns:
         return pd.DataFrame()
 
+    # Skip positions opened today — stops need at least 1 day
+    today = date_type.today()
+    if "entry_date" in portfolio.columns:
+        portfolio_eval = portfolio[
+            portfolio["entry_date"].apply(
+                lambda x: pd.Timestamp(x).date() < today if pd.notna(x) else True
+            )
+        ]
+    else:
+        portfolio_eval = portfolio
+
+    if portfolio_eval.empty:
+        return pd.DataFrame()
+
     # Get latest close for each held ticker
     latest_prices = (
         prices.sort_values("date")
@@ -175,11 +198,11 @@ def check_trailing_stops(prices: pd.DataFrame) -> pd.DataFrame:
         .reset_index()[["ticker", "close"]]
     )
 
-    portfolio = portfolio.merge(latest_prices, on="ticker", how="left", suffixes=("", "_latest"))
-    close_col = "close_latest" if "close_latest" in portfolio.columns else "close"
+    portfolio_eval = portfolio_eval.merge(latest_prices, on="ticker", how="left", suffixes=("", "_latest"))
+    close_col = "close_latest" if "close_latest" in portfolio_eval.columns else "close"
 
-    triggered = portfolio[
-        portfolio[close_col] < portfolio["stop_price"]
+    triggered = portfolio_eval[
+        portfolio_eval[close_col] < portfolio_eval["stop_price"]
     ][["ticker", close_col, "stop_price"]].copy()
 
     if not triggered.empty:

@@ -22,12 +22,13 @@ RAW_DIR       = Path(cfg["paths"]["raw_data"])
 PROCESSED_DIR = Path(cfg["paths"]["processed_data"])
 SNAPSHOTS_DIR = Path(cfg["paths"]["snapshots"])
 LOGS_DIR      = Path("logs")
+STOPS_DIR     = Path("data/stops")
 
 # Fetch timestamp file — tracks when each dataset was last fully refreshed
 FETCH_TIMESTAMPS_FILE = PROCESSED_DIR / "fetch_timestamps.json"
 
 # Ensure directories exist
-for d in [RAW_DIR, PROCESSED_DIR, SNAPSHOTS_DIR, LOGS_DIR]:
+for d in [RAW_DIR, PROCESSED_DIR, SNAPSHOTS_DIR, LOGS_DIR, STOPS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 
@@ -73,8 +74,7 @@ def load_parquet(folder: Path, filename: str) -> pd.DataFrame:
     path = folder / filename
     if not path.exists():
         return pd.DataFrame()
-    df = pd.read_parquet(path)
-    return df
+    return pd.read_parquet(path)
 
 
 def append_parquet(df: pd.DataFrame, folder: Path, filename: str) -> None:
@@ -87,7 +87,10 @@ def append_parquet(df: pd.DataFrame, folder: Path, filename: str) -> None:
     path = folder / filename
     if path.exists():
         existing = pd.read_parquet(path)
-        combined = pd.concat([existing, df], ignore_index=True)
+        if existing.empty:
+            combined = df
+        else:
+            combined = pd.concat([existing, df], ignore_index=True)
     else:
         combined = df
     combined.to_parquet(path, index=False)
@@ -187,11 +190,100 @@ def load_constituents(data_dir: Path = None) -> pd.DataFrame:
     _set_cached("constituents", df)
     return df
 
+
+# ============================================================
+# REGIME DATA — APPEND + DEDUPLICATE (never overwrite history)
+# ============================================================
+
 def save_regime_data(key: str, df: pd.DataFrame) -> None:
-    save_parquet(df, RAW_DIR, f"regime_{key}.parquet")
+    """
+    Appends new regime rows to the existing parquet, deduplicating by date.
+    Never overwrites history — only adds new dates or updates existing ones.
+    This ensures the 252-row VIX lookback is always satisfied after first backfill.
+    """
+    if df.empty:
+        return
+
+    path = RAW_DIR / f"regime_{key}.parquet"
+
+    if path.exists():
+        existing = pd.read_parquet(path)
+        if not existing.empty:
+            # Normalize date column to datetime for consistent dedup
+            existing["date"] = pd.to_datetime(existing["date"])
+            df = df.copy()
+            df["date"] = pd.to_datetime(df["date"])
+            # New data wins for any overlapping dates
+            combined = pd.concat([existing, df], ignore_index=True)
+            combined = combined.drop_duplicates(subset=["date"], keep="last")
+            combined = combined.sort_values("date").reset_index(drop=True)
+            combined.to_parquet(path, index=False)
+            print(f"[storage] Regime {key}: {len(existing)} existing + {len(df)} new = {len(combined)} total rows")
+            return
+
+    # No existing file — just save
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values("date").reset_index(drop=True)
+    df.to_parquet(path, index=False)
+    print(f"[storage] Regime {key}: saved {len(df)} rows (new file)")
+
 
 def load_regime_data(key: str) -> pd.DataFrame:
     return load_parquet(RAW_DIR, f"regime_{key}.parquet")
+
+
+# ============================================================
+# STOP LOSS FILES — P2 auto-execution with veto window
+# ============================================================
+
+def save_stop_exits(tickers: list, run_date: date = None) -> Path:
+    """
+    Writes triggered stop tickers to data/stops/YYYYMMDD_stop_exits.csv.
+    Called EOD by risk monitor. Executor reads this next morning.
+    Returns the path written.
+    """
+    if run_date is None:
+        run_date = date.today()
+    STOPS_DIR.mkdir(parents=True, exist_ok=True)
+    path = STOPS_DIR / f"{run_date.strftime('%Y%m%d')}_stop_exits.csv"
+    pd.DataFrame({"ticker": tickers}).to_csv(path, index=False)
+    print(f"[storage] Stop exits written: {len(tickers)} tickers → {path}")
+    return path
+
+
+def load_stop_exits(run_date: date = None) -> list:
+    """
+    Loads today's stop exit tickers.
+    Returns empty list if no file found.
+    """
+    if run_date is None:
+        run_date = date.today()
+    path = STOPS_DIR / f"{run_date.strftime('%Y%m%d')}_stop_exits.csv"
+    if not path.exists():
+        return []
+    df = pd.read_csv(path)
+    return df["ticker"].tolist() if not df.empty else []
+
+
+def load_stop_cancels(run_date: date = None) -> list:
+    """
+    Loads today's stop cancel file if Punyam placed one.
+    File: data/stops/YYYYMMDD_stop_cancel.csv with column: ticker
+    Any ticker in this file is removed from stop execution.
+    Returns empty list if no cancel file found.
+    """
+    if run_date is None:
+        run_date = date.today()
+    path = STOPS_DIR / f"{run_date.strftime('%Y%m%d')}_stop_cancel.csv"
+    if not path.exists():
+        return []
+    df = pd.read_csv(path)
+    cancelled = df["ticker"].tolist() if not df.empty else []
+    if cancelled:
+        print(f"[storage] Stop cancels loaded: {cancelled}")
+    return cancelled
+
 
 def save_signals(df: pd.DataFrame) -> None:
     save_parquet(df, PROCESSED_DIR, "signals.parquet")
@@ -301,8 +393,7 @@ def load_decision_log() -> pd.DataFrame:
 def append_portfolio_history(positions_df: pd.DataFrame, run_date: date) -> None:
     """
     Appends current portfolio positions to logs/portfolio_history.parquet.
-    Each row = one position on one date. Empty portfolio records a single
-    row with ticker='CASH_ONLY' so the date still appears in history.
+    Each row = one position on one date.
     """
     if positions_df.empty:
         empty_row = pd.DataFrame([{
