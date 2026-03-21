@@ -1,6 +1,8 @@
 """
 QuantForge — Systematic Equity Backtest Dashboard
 Streamlit Cloud entry point: streamlit_app.py
+
+UPDATED: Added EXP005 (15 Signals) as third strategy option.
 """
 
 import os
@@ -172,20 +174,68 @@ def dpath(*parts):
     return os.path.join(BASE, "data", *parts)
 
 
+# ── STRATEGY CONFIG ───────────────────────────────────────────────────────────
+# EXP005 uses "exp005" as strategy key and "monthly" as fixed frequency
+STRATEGY_OPTIONS = {
+    "mv": "Mean-Variance (MV)",
+    "bl": "Black-Litterman (BL)",
+    "exp005": "EXP005 — 15 Signals",
+}
+
+SIGNAL_COLS_11 = [
+    'momentum_12_1', 'earnings_momentum', 'pe_zscore', 'pb_zscore',
+    'ev_ebitda_zscore', 'roe_stability', 'gross_margin_trend',
+    'piotroski', 'earnings_accruals', 'short_term_reversal', 'rsi_extremes',
+]
+
+SIGNAL_COLS_15 = SIGNAL_COLS_11 + [
+    'revenue_growth', 'low_volatility', 'fcf_yield', 'volume_momentum',
+]
+
+SIGNAL_LABELS = {
+    'momentum_12_1': '12-1 Momentum', 'earnings_momentum': 'Earnings Momentum',
+    'pe_zscore': 'P/E Z-Score', 'pb_zscore': 'P/B Z-Score',
+    'ev_ebitda_zscore': 'EV/EBITDA Z-Score', 'roe_stability': 'ROE Stability',
+    'gross_margin_trend': 'Gross Margin Trend', 'piotroski': 'Piotroski F-Score',
+    'earnings_accruals': 'Earnings Accruals', 'short_term_reversal': 'Short-Term Reversal',
+    'rsi_extremes': 'RSI Extremes',
+    'revenue_growth': 'Revenue Growth (QoQ)', 'low_volatility': 'Low Volatility',
+    'fcf_yield': 'FCF Yield', 'volume_momentum': 'Volume Momentum',
+}
+
+GROUPS = {
+    'Momentum':  ['momentum_12_1', 'earnings_momentum'],
+    'Value':     ['pe_zscore', 'pb_zscore', 'ev_ebitda_zscore', 'fcf_yield'],
+    'Quality':   ['roe_stability', 'gross_margin_trend', 'piotroski', 'earnings_accruals'],
+    'Mean Rev':  ['short_term_reversal', 'rsi_extremes'],
+    'Growth':    ['revenue_growth'],
+    'Defensive': ['low_volatility'],
+    'Sentiment': ['volume_momentum'],
+}
+
+GROUP_COLORS = {
+    'Momentum': C["strategy"], 'Value': C["accent"],
+    'Quality': C["purple"], 'Mean Rev': C["amber"],
+    'Growth': '#FF6B6B', 'Defensive': '#4ECDC4', 'Sentiment': '#FFE66D',
+}
+
+
 # ── DATA LOADERS ──────────────────────────────────────────────────────────────
 @st.cache_data(show_spinner=False)
 def load_prices():
     return pd.read_parquet(dpath("backtest/prices.parquet"))
 
 @st.cache_data(show_spinner=False)
-def load_signals():
-    df = pd.read_parquet(dpath("backtest/precomputed/signals_history.parquet"))
+def load_signals(is_exp005=False):
+    fname = "signals_history_exp005.parquet" if is_exp005 else "signals_history.parquet"
+    df = pd.read_parquet(dpath(f"backtest/precomputed/{fname}"))
     df['date'] = pd.to_datetime(df['date'])
     return df
 
 @st.cache_data(show_spinner=False)
-def load_fwd_returns():
-    df = pd.read_parquet(dpath("backtest/precomputed/forward_returns.parquet"))
+def load_fwd_returns(is_exp005=False):
+    fname = "forward_returns_exp005.parquet" if is_exp005 else "forward_returns.parquet"
+    df = pd.read_parquet(dpath(f"backtest/precomputed/{fname}"))
     df['date'] = pd.to_datetime(df['date'])
     return df
 
@@ -206,9 +256,6 @@ def load_regime_history():
 
 @st.cache_data(show_spinner=False)
 def load_wf_nav_stitched(strategy, freq):
-    """
-    Chain-links walk-forward windows so NAV compounds continuously.
-    """
     windows = [str(i) for i in range(1, 10)] + ['holdout']
     return_series = []
     for w in windows:
@@ -258,7 +305,6 @@ def get_spy_nav(index, start_nav):
 
 # ── REGIME OVERLAY HELPER ─────────────────────────────────────────────────────
 def add_regime_overlay(fig, regime_df, nav_start, nav_end):
-    """Adds vrect shading to a Plotly figure for each regime period."""
     if regime_df.empty:
         return
     dates      = regime_df["date"].tolist()
@@ -327,18 +373,29 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="sidebar-label">Optimizer</div>', unsafe_allow_html=True)
-    strategy = st.selectbox("", ["mv", "bl"],
-        format_func=lambda x: "Mean-Variance (MV)" if x == "mv" else "Black-Litterman (BL)",
+    st.markdown('<div class="sidebar-label">Strategy</div>', unsafe_allow_html=True)
+    strategy = st.selectbox("", list(STRATEGY_OPTIONS.keys()),
+        format_func=lambda x: STRATEGY_OPTIONS[x],
         label_visibility="collapsed")
 
-    st.markdown('<div class="sidebar-label" style="margin-top:12px">Rebalance Frequency</div>', unsafe_allow_html=True)
-    freq = st.selectbox("", ["monthly", "quarterly"],
-        format_func=lambda x: x.capitalize(),
-        label_visibility="collapsed")
+    is_exp005 = (strategy == "exp005")
+
+    # EXP005 is monthly only — no frequency choice needed
+    if is_exp005:
+        freq = "monthly"
+        st.markdown('<div class="sidebar-label" style="margin-top:12px">Rebalance Frequency</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-stat">Monthly (fixed)</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="sidebar-label" style="margin-top:12px">Rebalance Frequency</div>', unsafe_allow_html=True)
+        freq = st.selectbox("", ["monthly", "quarterly"],
+            format_func=lambda x: x.capitalize(),
+            label_visibility="collapsed")
+
+    n_signals = 15 if is_exp005 else 11
+    signals_label = f"{n_signals} Multi-Factor"
 
     st.markdown("---")
-    st.markdown("""
+    st.markdown(f"""
     <div class="sidebar-label">Universe</div>
     <div class="sidebar-stat">S&P 500 Constituents</div>
     <div class="sidebar-label">Capital</div>
@@ -348,12 +405,27 @@ with st.sidebar:
     <div class="sidebar-label">Walk-Forward Windows</div>
     <div class="sidebar-stat">9 OOS + Holdout</div>
     <div class="sidebar-label">Training Window</div>
-    <div class="sidebar-stat">3-Year Sliding</div>
+    <div class="sidebar-stat">Expanding (2009-based)</div>
     <div class="sidebar-label">Max Position Size</div>
     <div class="sidebar-stat">5% per Stock</div>
     <div class="sidebar-label">Signals</div>
-    <div class="sidebar-stat">11 Multi-Factor</div>
+    <div class="sidebar-stat">{signals_label}</div>
     """, unsafe_allow_html=True)
+
+    if is_exp005:
+        st.markdown("""
+        <div style='margin-top:12px; padding:10px; background:#0D1A14; border:1px solid #1A3828; border-radius:6px'>
+          <div class="sidebar-label" style="color:#00C4B4">EXP005 Additions</div>
+          <div style="font-size:11px; color:#8BAEC8; line-height:1.6">
+            + Revenue Growth<br>
+            + Low Volatility<br>
+            + FCF Yield<br>
+            + Volume Momentum<br>
+            + VIX threshold 0.95<br>
+            + Regime multipliers
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ── LOAD CORE DATA ────────────────────────────────────────────────────────────
@@ -362,17 +434,18 @@ with st.spinner("Loading backtest data…"):
     regime_df  = load_regime_history()
 
 if wf_nav.empty:
-    st.error("No walk-forward NAV data found. Check data/backtest/wf_results/")
+    st.error(f"No walk-forward NAV data found for {strategy}/{freq}. Check data/backtest/wf_results/")
     st.stop()
 
 primary_nav = wf_nav['nav']
 spy_nav     = get_spy_nav(primary_nav.index, primary_nav.iloc[0])
 
 # ── PAGE HEADER ───────────────────────────────────────────────────────────────
+strategy_label = STRATEGY_OPTIONS[strategy]
 col_h1, col_h2 = st.columns([3, 1])
 with col_h1:
     st.markdown(f"""
-    <div class='qf-header' style='margin-top:8px'>Backtest Results · {strategy.upper()} · {freq.capitalize()}</div>
+    <div class='qf-header' style='margin-top:8px'>Backtest Results · {strategy_label} · {freq.capitalize()}</div>
     <div class='qf-title'>Performance Dashboard</div>
     """, unsafe_allow_html=True)
 with col_h2:
@@ -420,7 +493,6 @@ with tab1:
     kpi_html += '</div>'
     st.markdown(kpi_html, unsafe_allow_html=True)
 
-    # ── NAV chart with regime overlay ──
     st.markdown('<div class="section-label">Cumulative Growth of $1,000,000</div>', unsafe_allow_html=True)
 
     show_regime = False
@@ -446,7 +518,7 @@ with tab1:
 
     fig.add_trace(go.Scatter(
         x=primary_nav.index, y=primary_nav,
-        name=f"Strategy ({strategy.upper()} {freq})",
+        name=f"Strategy ({strategy_label})",
         line=dict(color=C["strategy"], width=2),
         fill='tozeroy', fillcolor='rgba(0,196,180,0.06)',
     ))
@@ -501,7 +573,7 @@ with tab1:
                 ("Alpha (Ann.)",   fmt(m.get('alpha'), 'pct'),       "—"),
                 ("Tracking Error", fmt(m.get('te'), 'pct_plain'),    "—"),
             ]
-            cmp_df = pd.DataFrame(rows, columns=["Metric", f"{strategy.upper()}-{freq}", "SPY"])
+            cmp_df = pd.DataFrame(rows, columns=["Metric", strategy_label, "SPY"])
             st.dataframe(cmp_df.set_index("Metric"), use_container_width=True, height=340)
         else:
             st.info("SPY benchmark not available.")
@@ -643,7 +715,7 @@ with tab3:
         st.markdown('<div class="section-label">Composite Score of Holdings vs Universe</div>', unsafe_allow_html=True)
         if 'composite_score' in active.columns:
             try:
-                signals_df   = load_signals()
+                signals_df   = load_signals(is_exp005)
                 univ_monthly = signals_df.set_index('date').resample('ME')['composite_score'].mean()
                 held_monthly = active.set_index('date').resample('ME')['composite_score'].mean()
                 fig_score = go.Figure()
@@ -683,35 +755,22 @@ with tab3:
 # TAB 4 — SIGNALS
 # ══════════════════════════════════════════════════════════════════════════════
 with tab4:
-    SIGNAL_COLS = [
-        'momentum_12_1', 'earnings_momentum', 'pe_zscore', 'pb_zscore',
-        'ev_ebitda_zscore', 'roe_stability', 'gross_margin_trend',
-        'piotroski', 'earnings_accruals', 'short_term_reversal', 'rsi_extremes',
-    ]
-    SIGNAL_LABELS = {
-        'momentum_12_1': '12-1 Momentum', 'earnings_momentum': 'Earnings Momentum',
-        'pe_zscore': 'P/E Z-Score', 'pb_zscore': 'P/B Z-Score',
-        'ev_ebitda_zscore': 'EV/EBITDA Z-Score', 'roe_stability': 'ROE Stability',
-        'gross_margin_trend': 'Gross Margin Trend', 'piotroski': 'Piotroski F-Score',
-        'earnings_accruals': 'Earnings Accruals', 'short_term_reversal': 'Short-Term Reversal',
-        'rsi_extremes': 'RSI Extremes',
-    }
-    GROUPS = {
-        'Momentum': ['momentum_12_1', 'earnings_momentum'],
-        'Value':    ['pe_zscore', 'pb_zscore', 'ev_ebitda_zscore'],
-        'Quality':  ['roe_stability', 'gross_margin_trend', 'piotroski', 'earnings_accruals'],
-        'Mean Rev': ['short_term_reversal', 'rsi_extremes'],
-    }
-    GROUP_COLORS = {'Momentum': C["strategy"], 'Value': C["accent"],
-                    'Quality': C["purple"], 'Mean Rev': C["amber"]}
+    ACTIVE_SIGNAL_COLS = SIGNAL_COLS_15 if is_exp005 else SIGNAL_COLS_11
+    # Filter groups to only show relevant signals
+    active_groups = {}
+    for g, cols in GROUPS.items():
+        active_cols = [c for c in cols if c in ACTIVE_SIGNAL_COLS]
+        if active_cols:
+            active_groups[g] = active_cols
 
     @st.cache_data(show_spinner=False)
-    def compute_ic():
-        sig    = load_signals()
-        fwd    = load_fwd_returns()
+    def compute_ic(_is_exp005):
+        sig    = load_signals(_is_exp005)
+        fwd    = load_fwd_returns(_is_exp005)
         merged = sig.merge(fwd[['ticker', 'date', 'fwd_1m']], on=['ticker', 'date'], how='inner')
+        signal_cols = SIGNAL_COLS_15 if _is_exp005 else SIGNAL_COLS_11
         results = []
-        for col in SIGNAL_COLS:
+        for col in signal_cols:
             if col not in merged.columns:
                 continue
             ic_ts = merged.groupby('date').apply(
@@ -728,7 +787,7 @@ with tab4:
 
     with st.spinner("Computing signal ICs…"):
         try:
-            ic_results = compute_ic()
+            ic_results = compute_ic(is_exp005)
             col1, col2 = st.columns([3, 2])
             with col1:
                 st.markdown('<div class="section-label">Information Coefficient (IC) — Mean Rank Correlation with 1-Month Forward Returns</div>', unsafe_allow_html=True)
@@ -747,7 +806,7 @@ with tab4:
                     ))
                 fig_ic.add_vline(x=0, line_color=C["grid"], line_width=1)
                 ic_layout = {**PLOTLY_BASE, 'margin': dict(l=0, r=80, t=30, b=10)}
-                fig_ic.update_layout(**ic_layout, height=400,
+                fig_ic.update_layout(**ic_layout, height=450 if is_exp005 else 400,
                                      xaxis_title="Mean IC (Spearman Rank Correlation)",
                                      barmode='relative')
                 st.plotly_chart(fig_ic, use_container_width=True)
@@ -758,7 +817,7 @@ with tab4:
                 tbl['Mean IC']  = tbl['Mean IC'].map(lambda x: f"{x:.4f}")
                 tbl['IC IR']    = tbl['IC IR'].map(lambda x: f"{x:.2f}")
                 tbl['Hit Rate'] = tbl['Hit Rate'].map(lambda x: f"{x:.1%}")
-                st.dataframe(tbl.set_index('Signal'), use_container_width=True, height=400)
+                st.dataframe(tbl.set_index('Signal'), use_container_width=True, height=450 if is_exp005 else 400)
 
             st.markdown('<div class="section-label">Rolling IC Over Time — Top Signals</div>', unsafe_allow_html=True)
             top_signals = sorted(ic_results, key=lambda x: abs(x['Mean IC']), reverse=True)[:5]
@@ -774,30 +833,31 @@ with tab4:
         except Exception as e:
             st.error(f"IC computation error: {e}")
 
-    st.markdown('<div class="section-label">Signal Decay — Rank Correlation vs Holding Horizon</div>', unsafe_allow_html=True)
-    try:
-        decay_df = load_signal_decay().dropna(subset=['rank_correlation'])
-        if not decay_df.empty and len(decay_df) > 2:
-            fig_decay = go.Figure()
-            for sig in decay_df['signal_name'].unique():
-                sub = decay_df[decay_df['signal_name'] == sig].sort_values('date')
-                fig_decay.add_trace(go.Scatter(x=sub['date'], y=sub['rank_correlation'],
-                    name=SIGNAL_LABELS.get(sig, sig), mode='lines', line=dict(width=1.5)))
-            fig_decay.add_hline(y=0.65, line_dash="dot", line_color=C["amber"],
-                                annotation_text="  Drift-rebalance trigger (0.65)",
-                                annotation_font_color=C["amber"])
-            fig_decay.update_layout(**PLOTLY_BASE, height=280, yaxis_title="Rank Correlation")
-            st.plotly_chart(fig_decay, use_container_width=True)
-        else:
-            st.info("Signal decay data is sparse — requires more live pipeline cycles to populate.")
-    except Exception as e:
-        st.warning(f"Signal decay unavailable: {e}")
+    if not is_exp005:
+        st.markdown('<div class="section-label">Signal Decay — Rank Correlation vs Holding Horizon</div>', unsafe_allow_html=True)
+        try:
+            decay_df = load_signal_decay().dropna(subset=['rank_correlation'])
+            if not decay_df.empty and len(decay_df) > 2:
+                fig_decay = go.Figure()
+                for sig in decay_df['signal_name'].unique():
+                    sub = decay_df[decay_df['signal_name'] == sig].sort_values('date')
+                    fig_decay.add_trace(go.Scatter(x=sub['date'], y=sub['rank_correlation'],
+                        name=SIGNAL_LABELS.get(sig, sig), mode='lines', line=dict(width=1.5)))
+                fig_decay.add_hline(y=0.65, line_dash="dot", line_color=C["amber"],
+                                    annotation_text="  Drift-rebalance trigger (0.65)",
+                                    annotation_font_color=C["amber"])
+                fig_decay.update_layout(**PLOTLY_BASE, height=280, yaxis_title="Rank Correlation")
+                st.plotly_chart(fig_decay, use_container_width=True)
+            else:
+                st.info("Signal decay data is sparse — requires more live pipeline cycles to populate.")
+        except Exception as e:
+            st.warning(f"Signal decay unavailable: {e}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 5 — WALK-FORWARD
 # ══════════════════════════════════════════════════════════════════════════════
 with tab5:
-    st.markdown('<div class="section-label">Out-of-Sample Walk-Forward · 9 Windows + Holdout · 3-Year Sliding Training</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-label">Out-of-Sample Walk-Forward · 9 Windows + Holdout · {strategy_label}</div>', unsafe_allow_html=True)
 
     @st.cache_data(show_spinner=False)
     def per_window_metrics(strat, fr):
@@ -859,7 +919,7 @@ with tab5:
         st.dataframe(tbl.set_index('Window'), use_container_width=True)
 
     st.markdown("---")
-    st.markdown('<div class="section-label">All Strategy × Frequency Combinations</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label">All Strategy Combinations</div>', unsafe_allow_html=True)
 
     @st.cache_data(show_spinner=False)
     def all_combo_metrics():
@@ -872,6 +932,12 @@ with tab5:
                 m2 = metrics(wf['nav'])
                 m2['Strategy'] = f"{strat.upper()}-{fr}"
                 rows.append(m2)
+        # Add EXP005
+        wf = load_wf_nav_stitched('exp005', 'monthly')
+        if not wf.empty:
+            m2 = metrics(wf['nav'])
+            m2['Strategy'] = "EXP005-monthly"
+            rows.append(m2)
         return pd.DataFrame(rows)
 
     with st.spinner("Loading all combinations…"):
@@ -885,7 +951,8 @@ with tab5:
         key  = metric_opts[sel]
         scale = 100 if key in ['ann_ret', 'max_dd', 'vol'] else 1
         strat_colors = {'MV-monthly': C["strategy"], 'MV-quarterly': '#007D74',
-                        'BL-monthly': C["purple"],   'BL-quarterly': '#4A3080'}
+                        'BL-monthly': C["purple"],   'BL-quarterly': '#4A3080',
+                        'EXP005-monthly': '#FFD700'}
         fig_cmp = go.Figure(go.Bar(
             x=combo_df['Strategy'], y=combo_df[key] * scale,
             marker_color=[strat_colors.get(s, C["neutral"]) for s in combo_df['Strategy']],
@@ -924,15 +991,42 @@ with tab6:
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("""
-        <div class="method-card">
-          <div class="method-card-title">How does it pick stocks?</div>
-          <p>We score every S&P 500 stock on 11 signals across four categories:</p>
-          <ul>
+        if is_exp005:
+            st.markdown("""
+            <div class="method-card">
+              <div class="method-card-title">How does EXP005 differ from the base strategy?</div>
+              <p>EXP005 extends the base 11-signal system with four additional factors and improved regime calibration:</p>
+              <ul>
+                <li><span class="teal">Revenue Growth</span> — quarter-over-quarter revenue acceleration captures forward earnings expectations that backward-looking accounting signals miss</li>
+                <li><span class="teal">Low Volatility</span> — inverse of 252-day realized volatility provides defensive tilt during bear markets (2022: +31% alpha vs SPY)</li>
+                <li><span class="teal">FCF Yield</span> — annualized free cash flow / market cap adds a cash-generation value signal orthogonal to P/E and P/B</li>
+                <li><span class="teal">Volume Momentum</span> — 5-day vs 60-day average volume ratio captures unusual institutional activity</li>
+              </ul>
+              <br>
+              <p>Additionally, the VIX regime threshold was recalibrated from 0.80 to 0.95 based on empirical analysis showing the original threshold classified only 21% of months as bull vs the actual ~55% proportion. Regime-conditional signal multipliers are applied to all 15 signals.</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        signals_desc = "15 signals across seven categories" if is_exp005 else "11 signals across four categories"
+        categories_html = """
             <li><span class="teal">Momentum</span> — stocks that have been rising tend to keep rising (12-month price trend, earnings acceleration)</li>
             <li><span class="teal">Value</span> — stocks trading cheaply relative to earnings and book value (P/E, P/B, EV/EBITDA vs sector peers)</li>
             <li><span class="teal">Quality</span> — financially healthy companies with stable earnings and improving margins (ROE stability, Piotroski F-Score, accruals)</li>
             <li><span class="teal">Mean Reversion</span> — stocks that have fallen too far, too fast and are likely to bounce back (5-day reversal, RSI extremes)</li>
+        """
+        if is_exp005:
+            categories_html += """
+            <li><span class="teal">Growth</span> — companies with accelerating revenue (QoQ revenue growth)</li>
+            <li><span class="teal">Defensive</span> — lower-volatility stocks that protect capital in downturns (inverse 252d vol)</li>
+            <li><span class="teal">Sentiment</span> — unusual trading volume signaling institutional interest (volume momentum)</li>
+            """
+
+        st.markdown(f"""
+        <div class="method-card">
+          <div class="method-card-title">How does it pick stocks?</div>
+          <p>We score every S&P 500 stock on {signals_desc}:</p>
+          <ul>
+            {categories_html}
           </ul>
           <br>
           <p>Each signal is weighted by how predictive it has historically been (IC-IR weighting). The top-scoring stocks get bought; the rest get sold or ignored.</p>
@@ -978,8 +1072,8 @@ with tab6:
           <div class="pipeline-step">
             <div class="step-num">1</div>
             <div class="step-body">
-              <div class="step-title">Train on 3 years of history</div>
-              <div class="step-desc">The system learns signal weights and optimizer parameters using only data from the past 3 years. No future data is ever used in this step.</div>
+              <div class="step-title">Train on expanding history</div>
+              <div class="step-desc">The system learns signal weights and optimizer parameters using all data from 2009 up to the training cutoff. No future data is ever used in this step.</div>
             </div>
           </div>
           <div class="pipeline-step">
@@ -993,14 +1087,14 @@ with tab6:
             <div class="step-num">3</div>
             <div class="step-body">
               <div class="step-title">Slide the window forward and repeat</div>
-              <div class="step-desc">The training window moves forward by one year and the process repeats. We ran 9 windows from 2013 to 2021, each independently trained and tested.</div>
+              <div class="step-desc">The training window expands by one year and the process repeats. We ran 9 windows from 2013 to 2021, each independently trained and tested.</div>
             </div>
           </div>
           <div class="pipeline-step">
             <div class="step-num">4</div>
             <div class="step-body">
-              <div class="step-title">Final holdout: 2022–2025</div>
-              <div class="step-desc">The last 4 years were completely untouched during development. This is the strictest test — a period the model was never shown. It covers a bear market (2022), recovery (2023), and a narrow mega-cap driven bull market (2024–2025).</div>
+              <div class="step-title">Final holdout: 2022–2026</div>
+              <div class="step-desc">The last 4+ years were completely untouched during development. This is the strictest test — a period the model was never shown. It covers a bear market (2022), recovery (2023), and a narrow mega-cap driven bull market (2024–2025).</div>
             </div>
           </div>
         </div>
@@ -1034,7 +1128,7 @@ with tab6:
             <p><strong>Fundamental data is point-in-time approximated, not exact.</strong> FMP quarterly financials are stamped by reporting period end date. In reality, companies file 30–60 days after quarter-end. We apply a 45-day announcement lag buffer, which approximates but does not perfectly replicate the exact filing date for every stock.</p>
           </div>
           <div class="honesty-box">
-            <p><strong>The 2024–2025 lag is expected and explainable.</strong> The strategy is diversified across 30–80 stocks with a 5% cap per position. When the market is driven by 5–7 mega-cap tech stocks (NVIDIA, Apple, Microsoft), a diversified approach will underperform a market-cap-weighted index. This is a feature, not a bug — it reflects a deliberate risk management choice.</p>
+            <p><strong>The 2024–2025 lag is expected and explainable.</strong> The strategy is diversified across 20–80 stocks with a 5% cap per position. When the market is driven by 5–7 mega-cap tech stocks (NVIDIA, Apple, Microsoft), a diversified approach will underperform a market-cap-weighted index. This is a feature, not a bug — it reflects a deliberate risk management choice.</p>
           </div>
           <div class="honesty-box">
             <p><strong>This is a paper trading simulation.</strong> The strategy currently runs on Alpaca paper trading with $1M simulated capital. Live performance may differ from backtested results due to slippage, order fills, and data latency.</p>
