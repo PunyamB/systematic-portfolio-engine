@@ -180,6 +180,7 @@ STRATEGY_OPTIONS = {
     "mv": "Mean-Variance (MV)",
     "bl": "Black-Litterman (BL)",
     "exp005": "EXP005 — 15 Signals",
+    "exp006": "EXP006 — 15 Signals (Extended)",
 }
 
 SIGNAL_COLS_11 = [
@@ -227,14 +228,14 @@ def load_prices():
 
 @st.cache_data(show_spinner=False)
 def load_signals(is_exp005=False):
-    fname = "signals_history_exp005.parquet" if is_exp005 else "signals_history.parquet"
+    fname = "signals_history_exp006.parquet" if strategy == "exp006" else ("signals_history_exp005.parquet" if strategy == "exp005" else "signals_history.parquet")
     df = pd.read_parquet(dpath(f"backtest/precomputed/{fname}"))
     df['date'] = pd.to_datetime(df['date'])
     return df
 
 @st.cache_data(show_spinner=False)
 def load_fwd_returns(is_exp005=False):
-    fname = "forward_returns_exp005.parquet" if is_exp005 else "forward_returns.parquet"
+    fname = "forward_returns_exp006.parquet" if strategy == "exp006" else ("forward_returns_exp005.parquet" if strategy == "exp005" else "forward_returns.parquet")
     df = pd.read_parquet(dpath(f"backtest/precomputed/{fname}"))
     df['date'] = pd.to_datetime(df['date'])
     return df
@@ -256,7 +257,13 @@ def load_regime_history():
 
 @st.cache_data(show_spinner=False)
 def load_wf_nav_stitched(strategy, freq):
-    windows = [str(i) for i in range(1, 10)] + ['holdout']
+    # Auto-detect which windows exist for this strategy
+    windows = []
+    for i in range(1, 30):
+        f_check = dpath(f'backtest/wf_results/nav_window_{i}_{strategy}_{freq}.parquet')
+        if os.path.exists(f_check):
+            windows.append(str(i))
+    windows.append('holdout')
     return_series = []
     for w in windows:
         f = dpath(f"backtest/wf_results/nav_window_{w}_{strategy}_{freq}.parquet")
@@ -378,7 +385,7 @@ with st.sidebar:
         format_func=lambda x: STRATEGY_OPTIONS[x],
         label_visibility="collapsed")
 
-    is_exp005 = (strategy == "exp005")
+    is_exp005 = (strategy in ["exp005", "exp006"])
 
     # EXP005 is monthly only — no frequency choice needed
     if is_exp005:
@@ -403,9 +410,9 @@ with st.sidebar:
     <div class="sidebar-label">Benchmark</div>
     <div class="sidebar-stat">SPY (Total Return)</div>
     <div class="sidebar-label">Walk-Forward Windows</div>
-    <div class="sidebar-stat">9 OOS + Holdout</div>
+    {"17 OOS + Holdout" if strategy == "exp006" else "9 OOS + Holdout"}</div>
     <div class="sidebar-label">Training Window</div>
-    <div class="sidebar-stat">Expanding (2009-based)</div>
+    <div class="sidebar-stat">{("Expanding (1997-based)" if strategy == "exp006" else "Expanding (2009-based)")}</div>
     <div class="sidebar-label">Max Position Size</div>
     <div class="sidebar-stat">5% per Stock</div>
     <div class="sidebar-label">Signals</div>
@@ -938,6 +945,12 @@ with tab5:
             m2 = metrics(wf['nav'])
             m2['Strategy'] = "EXP005-monthly"
             rows.append(m2)
+        # Add EXP006
+        wf = load_wf_nav_stitched('exp006', 'monthly')
+        if not wf.empty:
+            m2 = metrics(wf['nav'])
+            m2['Strategy'] = "EXP006-monthly"
+            rows.append(m2)
         return pd.DataFrame(rows)
 
     with st.spinner("Loading all combinations…"):
@@ -952,7 +965,7 @@ with tab5:
         scale = 100 if key in ['ann_ret', 'max_dd', 'vol'] else 1
         strat_colors = {'MV-monthly': C["strategy"], 'MV-quarterly': '#007D74',
                         'BL-monthly': C["purple"],   'BL-quarterly': '#4A3080',
-                        'EXP005-monthly': '#FFD700'}
+                        'EXP005-monthly': '#FFD700', 'EXP006-monthly': '#FF6B6B'}
         fig_cmp = go.Figure(go.Bar(
             x=combo_df['Strategy'], y=combo_df[key] * scale,
             marker_color=[strat_colors.get(s, C["neutral"]) for s in combo_df['Strategy']],
