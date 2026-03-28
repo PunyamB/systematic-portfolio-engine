@@ -25,6 +25,10 @@ from signals.piotroski          import compute as piotroski
 from signals.earnings_accruals  import compute as earnings_accruals
 from signals.short_term_reversal import compute as short_term_reversal
 from signals.rsi_extremes       import compute as rsi_extremes
+from signals.revenue_growth     import compute as revenue_growth
+from signals.low_volatility     import compute as low_volatility
+from signals.fcf_yield          import compute as fcf_yield
+from signals.volume_momentum    import compute as volume_momentum
 
 cfg = get_config()
 SC  = cfg["signals"]
@@ -32,7 +36,7 @@ SC  = cfg["signals"]
 IC_HISTORY_FILE = Path("data/processed/ic_history.parquet")
 WINSOR_CLIP     = 3.0   # clip Z-scores beyond 3 std
 IC_FLOOR        = SC.get("ic_floor", 0.0)
-IC_LOOKBACK     = SC.get("ic_lookback", 63)
+IC_LOOKBACK_MIN = SC.get("ic_lookback_min", 12)   # minimum IC obs to switch from equal weights
 
 ALL_SIGNALS = {
     "momentum_12_1":      momentum_12_1,
@@ -46,6 +50,10 @@ ALL_SIGNALS = {
     "earnings_accruals":  earnings_accruals,
     "short_term_reversal": short_term_reversal,
     "rsi_extremes":       rsi_extremes,
+    "revenue_growth":     revenue_growth,
+    "low_volatility":     low_volatility,
+    "fcf_yield":          fcf_yield,
+    "volume_momentum":    volume_momentum,
 }
 
 
@@ -144,7 +152,7 @@ def compute_ic_weights(regime: str) -> dict:
     equal_weight = 1.0 / len(ALL_SIGNALS)
     weights = {s: equal_weight for s in ALL_SIGNALS}
 
-    if not history.empty and len(history) >= IC_LOOKBACK:
+    if not history.empty and len(history) >= IC_LOOKBACK_MIN:
         ic_weights = {}
 
         for signal_name in ALL_SIGNALS.keys():
@@ -154,8 +162,8 @@ def compute_ic_weights(regime: str) -> dict:
                 ic_weights[signal_name] = equal_weight
                 continue
 
-            ic_mean = float(signal_ic.tail(IC_LOOKBACK).mean())
-            ic_std  = float(signal_ic.tail(IC_LOOKBACK).std())
+            ic_mean = float(signal_ic.mean())
+            ic_std  = float(signal_ic.std())
 
             if ic_std == 0:
                 ic_weights[signal_name] = equal_weight
@@ -257,7 +265,7 @@ def run_combiner(run_date: date = None, regime: str = "recovery") -> pd.DataFram
 
     # Minimum signal coverage floor — exclude tickers with fewer than 6 signals
     signal_count = scores_df.notna().sum(axis=1)
-    composite    = composite.where(signal_count >= 6, other=np.nan)
+    composite    = composite.where(signal_count >= 10, other=np.nan)
     composite    = composite.fillna(0.0)
 
     # Final cross-sectional rank (percentile 0-1)

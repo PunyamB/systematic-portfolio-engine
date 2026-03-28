@@ -43,6 +43,7 @@ from data.storage import (
     load_portfolio, load_prices, save_parquet,
     save_stop_exits,
 )
+from execution.order_manager import submit_orders, confirm_fills, update_portfolio_from_fills
 from fund_accounting.nav import load_nav_history
 
 cfg = get_config()
@@ -177,43 +178,98 @@ def _reprice_portfolio(run_date: date) -> None:
 
 
 # ------------------------------------------------------------
-# STOP / TRADE DEDUPLICATION
+# AUTO-EXECUTE STOP LOSSES
 # ------------------------------------------------------------
 
-def _reconcile_stops_and_trades(stop_exits: list, target_weights) -> tuple:
+def _auto_execute_stops(stop_exits: list, run_date, health: PipelineHealth) -> list:
     """
-    Removes overlap between stop exits and optimizer target weights.
+    Auto-executes trailing stop exits immediately during pipeline run.
+    Stops are P2 priority safety exits — they never wait for manual approval.
+    Returns list of tickers that were successfully filled.
+    """
+    import pandas as pd
 
-    For any ticker in BOTH stop_exits AND target_weights:
-    - Remove from stop_exits — the proposed trade already handles the net move
-      (current weight → target weight in one order, no sell-then-rebuy)
-    - Keep in proposed trades as-is
+    if not stop_exits:
+        return []
 
-    For tickers in stop_exits but NOT in target_weights:
-    - Keep in stop_exits — full exit, no rebuy intended
+    t0 = time.time()
 
-    Returns:
-        clean_stops:   list of tickers to execute as stop exits (no overlap)
-        logged_merged: list of tickers that were merged into proposed trades
+    portfolio = load_portfolio()
+    if portfolio.empty:
+        health.record("stop_execution", "skipped", time.time() - t0, "no portfolio")
+        return []
+
+    stop_positions = portfolio[portfolio["ticker"].isin(stop_exits)]
+    if stop_positions.empty:
+        health.record("stop_execution", "skipped", time.time() - t0, "no matching positions")
+        return []
+
+    trades = pd.DataFrame({
+        "ticker":     stop_positions["ticker"].tolist(),
+        "trade_type": ["sell"] * len(stop_positions),
+        "shares":     stop_positions["shares"].astype(int).tolist(),
+    })
+
+    print(f"[runner] Auto-executing {len(trades)} stop exits: {stop_exits}")
+
+    try:
+        submitted = submit_orders(trades)
+        if submitted.empty:
+            health.record("stop_execution", "failed", time.time() - t0, "no orders submitted")
+            notify(f"Stop auto-execution FAILED for {run_date} — no orders submitted: {stop_exits}", level="critical")
+            return []
+
+        # Wait for fills (market orders at open fill fast)
+        print(f"[runner] Waiting 30s for stop exit fills...")
+        time.sleep(30)
+
+        fills = confirm_fills(submitted)
+        update_portfolio_from_fills(fills)
+
+        filled_count = int(fills["filled"].sum()) if not fills.empty and "filled" in fills.columns else 0
+        filled_tickers = fills[fills["filled"] == True]["ticker"].tolist() if not fills.empty and "filled" in fills.columns else stop_exits
+
+        health.record("stop_execution", "success", time.time() - t0,
+                       f"{filled_count}/{len(submitted)} filled")
+
+        notify(
+            f"Stop exits AUTO-EXECUTED for {run_date}\n"
+            f"Tickers: {stop_exits}\n"
+            f"Filled: {filled_count}/{len(submitted)}",
+            level="warning"
+        )
+
+        print(f"[runner] Stop exits executed: {filled_count}/{len(submitted)} filled")
+        return filled_tickers
+
+    except Exception as e:
+        health.record("stop_execution", "failed", time.time() - t0, str(e))
+        notify(f"Stop auto-execution FAILED for {run_date}: {e}\nTickers: {stop_exits}", level="critical")
+        print(f"[runner] Stop execution failed: {e}")
+        return []
+
+
+# ------------------------------------------------------------
+# STOP / TRADE RECONCILIATION
+# ------------------------------------------------------------
+
+def _reconcile_stops_and_trades(stop_exits: list, target_weights) -> object:
+    """
+    Removes stop-triggered tickers from proposed trades.
+    Stop exits always execute in full via auto-execute in Stage 6b.
+    Removing them from proposed trades prevents a same-day rebuy.
+    Position will reappear as a fresh buy at the next rebalance if signal still holds.
     """
     if not stop_exits or target_weights is None or target_weights.empty:
-        return stop_exits, []
+        return target_weights
 
-    target_tickers = set(target_weights["ticker"].tolist())
-    clean_stops    = []
-    logged_merged  = []
+    filtered = target_weights[~target_weights["ticker"].isin(stop_exits)].copy()
+    removed  = [t for t in stop_exits if t in target_weights["ticker"].values]
 
-    for ticker in stop_exits:
-        if ticker in target_tickers:
-            logged_merged.append(ticker)
-        else:
-            clean_stops.append(ticker)
+    if removed:
+        print(f"[runner] Removed from proposed trades (stop triggered): {removed}")
 
-    if logged_merged:
-        print(f"[runner] Stop/trade merge: {logged_merged} absorbed into proposed trades "
-              f"(net trade handles the position adjustment — no sell-then-rebuy)")
-
-    return clean_stops, logged_merged
+    return filtered
 
 
 # ------------------------------------------------------------
@@ -354,10 +410,10 @@ def _print_action_summary(run_date: date) -> None:
                 pct_below = (stop - close) / stop * 100
                 print(f"  {ticker:<8} {close:>8.2f} {stop:>8.2f} {pct_below:>8.1f}%")
 
-            print(f"\n  → Run: python -m execution.execute_stops")
+            print(f"\n  Auto-executed during pipeline run")
         elif stops:
             print(f"\n  STOP LOSSES: {stops}")
-            print(f"  → Run: python -m execution.execute_stops")
+            print(f"  Auto-executed during pipeline run")
         else:
             print("\n  STOP LOSSES:     none triggered")
     else:
@@ -500,7 +556,7 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
             print(f"[runner] Circuit breaker T{cb_level} active")
 
         if stop_exits:
-            print(f"[runner] Trailing stop exits (pre-dedup): {stop_exits}")
+            print(f"[runner] Trailing stop exits: {stop_exits}")
 
         if drift_result_d.get("triggered"):
             drift_trigger = True
@@ -522,6 +578,15 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
         }, "risk", run_date)
 
     # ----------------------------------------------------------
+    # STAGE 6b — Auto-execute stop losses (P2 — no manual approval)
+    # ----------------------------------------------------------
+    if stop_exits:
+        save_stop_exits(stop_exits, run_date)
+        filled_stops = _auto_execute_stops(stop_exits, run_date, health)
+        decision["stop_exits"]     = ",".join(stop_exits)
+        decision["stops_executed"] = ",".join(filled_stops)
+
+    # ----------------------------------------------------------
     # STAGE 7 — Signal computation
     # ----------------------------------------------------------
     signals = _run_stage(health, "signals", run_combiner, run_date, regime)
@@ -539,7 +604,7 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
         print(f"[runner] Signal decay trigger — interim rebalance needed")
 
     # ----------------------------------------------------------
-    # STAGE 9 — Optimizer + stop/trade deduplication
+    # STAGE 9 — Optimizer
     # ----------------------------------------------------------
     run_optimizer_flag        = rebalance or drift_trigger or decay_trigger
     decision["optimizer_ran"] = run_optimizer_flag
@@ -558,20 +623,16 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
             decision["max_weight"]  = round(float(target_weights["target_weight"].max()), 4)
             save_snapshot(target_weights, "optimizer", run_date)
 
-            # Dedup: remove overlapping tickers from stop exits
-            # Those tickers are handled by the net trade in proposed trades
-            clean_stops, merged = _reconcile_stops_and_trades(stop_exits, target_weights)
+            # Remove stop-triggered tickers from proposed trades — no same-day rebuy.
+            # Stop exits already auto-executed in Stage 6b.
+            target_weights = _reconcile_stops_and_trades(stop_exits, target_weights)
 
+            # Write all stop exits to file — always in full, no filtering
             if stop_exits:
-                # Write only the clean (non-overlapping) stops to file
-                save_stop_exits(clean_stops, run_date)
-                if clean_stops:
-                    print(f"[runner] Stop exits (after dedup): {clean_stops}")
-                if merged:
-                    print(f"[runner] Merged into proposed trades: {merged}")
+                save_stop_exits(stop_exits, run_date)
+                print(f"[runner] Stop exits written: {stop_exits}")
 
-            decision["stop_exits"]        = ",".join(clean_stops) if clean_stops else ""
-            decision["stop_exits_merged"] = ",".join(merged) if merged else ""
+            decision["stop_exits"] = ",".join(stop_exits) if stop_exits else ""
 
             # Stage 10 — Write proposed trades
             proposed_path = _run_stage(
@@ -581,14 +642,10 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
             decision["proposed_trades_file"] = str(proposed_path) if proposed_path else ""
 
         else:
-            # No optimizer output — write stops as-is, no dedup possible
-            if stop_exits:
-                save_stop_exits(stop_exits, run_date)
-                decision["stop_exits"] = ",".join(stop_exits)
             health.record("proposed_trades", "skipped", 0, "optimizer returned empty")
 
     else:
-        # Non-rebalance day — write stops directly, no optimizer to dedup against
+        # Non-rebalance day — write stops directly
         if stop_exits:
             save_stop_exits(stop_exits, run_date)
             decision["stop_exits"] = ",".join(stop_exits)
@@ -640,7 +697,6 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
     print(f"[runner] Pipeline complete: {status} | {round(time.time() - health.start_time, 1)}s")
     print(f"[runner] ============================================================")
 
-    # Print action summary — what to run next
     _print_action_summary(run_date)
 
     return {

@@ -14,8 +14,8 @@ import numpy as np
 from pathlib import Path
 
 IC_HISTORY_FILE = Path("data/processed/ic_history.parquet")
-SIGNALS_FILE    = Path("data/backtest/precomputed/signals_history.parquet")
-FWD_FILE        = Path("data/backtest/precomputed/forward_returns.parquet")
+SIGNALS_FILE    = Path(r"D:\Projects\StrategyResearchLab\experiments\exp006_extended_wf\data\precomputed\signals_history.parquet")
+FWD_FILE        = Path(r"D:\Projects\StrategyResearchLab\experiments\exp006_extended_wf\data\precomputed\forward_returns.parquet")
 
 SIGNAL_NAMES = [
     "momentum_12_1",
@@ -29,6 +29,10 @@ SIGNAL_NAMES = [
     "earnings_accruals",
     "short_term_reversal",
     "rsi_extremes",
+    "revenue_growth",
+    "low_volatility",
+    "fcf_yield",
+    "volume_momentum",
 ]
 
 
@@ -137,7 +141,7 @@ def seed_ic(start_date: str = "2024-01-01"):
 
 
 if __name__ == "__main__":
-    start = "2024-01-01"
+    start = "1997-01-01"
     if len(sys.argv) > 1:
         start = sys.argv[1]
 
