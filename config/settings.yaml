@@ -188,3 +188,7 @@ paths:
   approved_trades: data/approved
   logs: logs
   pipeline_health: logs/pipeline_health.json
+
+stop_replacement:
+  cash_threshold: 100000
+  cooldown_days: 5
