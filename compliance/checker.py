@@ -88,11 +88,15 @@ def check_concentration(proposed_trades: pd.DataFrame, portfolio: pd.DataFrame, 
 
     for _, trade in proposed_trades.iterrows():
         ticker       = trade["ticker"]
-        trade_value  = float(trade.get("trade_value", 0))
+        trade_value  = float(trade.get("trade_value_usd", 0))
 
         current_value = 0.0
         if not portfolio.empty and ticker in portfolio["ticker"].values:
             current_value = float(portfolio.loc[portfolio["ticker"] == ticker, "market_value"].values[0])
+
+        # Sells reduce concentration — never block them
+        if trade_value < 0:
+            continue
 
         new_weight = (current_value + trade_value) / nav if nav > 0 else 0
 
