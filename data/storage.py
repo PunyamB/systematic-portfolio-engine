@@ -65,6 +65,12 @@ def save_parquet(df: pd.DataFrame, folder: Path, filename: str) -> None:
     """Saves a DataFrame as a Parquet file. Overwrites if exists."""
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / filename
+    # Normalize entry_date to string to prevent mixed-type parquet errors
+    if "entry_date" in df.columns:
+        df = df.copy()
+        df["entry_date"] = df["entry_date"].apply(
+            lambda x: x.isoformat() if hasattr(x, "isoformat") else str(x) if x is not None else None
+        )
     df.to_parquet(path, index=False)
     print(f"[storage] Saved {len(df)} rows to {path}")
 
@@ -93,6 +99,11 @@ def append_parquet(df: pd.DataFrame, folder: Path, filename: str) -> None:
             combined = pd.concat([existing, df], ignore_index=True)
     else:
         combined = df
+    # Normalize entry_date to string to prevent mixed-type parquet errors
+    if "entry_date" in combined.columns:
+        combined["entry_date"] = combined["entry_date"].apply(
+            lambda x: x.isoformat() if hasattr(x, "isoformat") else str(x) if x is not None else None
+        )
     combined.to_parquet(path, index=False)
 
 

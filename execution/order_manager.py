@@ -309,7 +309,7 @@ def reconcile_with_alpaca() -> pd.DataFrame:
             else:
                 # Position exists in Alpaca but not internally (manual trade or missed fill)
                 # Reconstruct stop anchor from price history rather than using today's price
-                entry_date = date.today()
+                entry_date = date.today().isoformat()
                 stop_ref   = pos["current_price"]  # fallback
 
                 if not prices.empty and ticker in prices["ticker"].values:
