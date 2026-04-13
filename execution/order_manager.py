@@ -278,6 +278,21 @@ def reconcile_with_alpaca() -> pd.DataFrame:
                 level="warning"
             )
 
+    # Remove positions in internal portfolio but not in Alpaca (sold externally or missed)
+    if not portfolio.empty and not alpaca_df.empty:
+        alpaca_tickers = set(alpaca_df['ticker'].tolist())
+        stale = portfolio[~portfolio['ticker'].isin(alpaca_tickers)]
+        if not stale.empty:
+            stale_list = stale['ticker'].tolist()
+            portfolio = portfolio[portfolio['ticker'].isin(alpaca_tickers)].reset_index(drop=True)
+            print(f'[execution] Reconciliation removed stale positions: {stale_list}')
+    elif portfolio.empty and not alpaca_df.empty:
+        pass  # all positions are new, handled below
+    elif not portfolio.empty and alpaca_df.empty:
+        stale_list = portfolio['ticker'].tolist()
+        portfolio = portfolio.iloc[0:0]  # clear all
+        print(f'[execution] Reconciliation: Alpaca has no positions, cleared internal: {stale_list}')
+
     if not alpaca_df.empty:
         prices = load_prices()
 

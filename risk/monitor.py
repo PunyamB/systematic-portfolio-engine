@@ -33,6 +33,9 @@ DRIFT_POSITION  = cfg["drift_rebalance"]["max_position_drift"]  # 0.03
 DRIFT_PORTFOLIO = cfg["drift_rebalance"]["max_portfolio_drift"] # 0.05
 DRIFT_SECTOR    = cfg["drift_rebalance"]["max_sector_drift"]    # 0.05
 
+# Drift detection anchor -- only updated by execute.py and stop auto-execution
+EXECUTED_WEIGHTS_PATH = Path("data/processed/executed_weights.parquet")
+
 
 # ------------------------------------------------------------
 # CIRCUIT BREAKER
@@ -42,10 +45,10 @@ def check_circuit_breaker(nav: float) -> dict:
     """
     Computes current drawdown from peak NAV.
     Returns circuit breaker tier (0-4) and required actions.
-    T1 (5%)  — info alert only
-    T2 (10%) — max position 3.5%, rebalance weekly, no new low-liquidity positions
-    T3 (15%) — gross exposure 70%, positions capped 2.5%, rebalance daily, no new positions 3 days
-    T4 (20%) — reduce to 40% invested, trading paused 5 days, manual review required
+    T1 (5%)  -- info alert only
+    T2 (10%) -- max position 3.5%, rebalance weekly, no new low-liquidity positions
+    T3 (15%) -- gross exposure 70%, positions capped 2.5%, rebalance daily, no new positions 3 days
+    T4 (20%) -- reduce to 40% invested, trading paused 5 days, manual review required
     """
     nav_history = load_nav_history()
     if nav_history.empty or len(nav_history) < 2:
@@ -130,12 +133,12 @@ def compute_trailing_stops(prices: pd.DataFrame, portfolio: pd.DataFrame) -> pd.
         if len(ticker_prices) < STOP_VOL_LOOKBACK:
             continue
 
-        # Vol: 25-day rolling std of daily returns (annualized not needed — raw daily vol)
+        # Vol: 25-day rolling std of daily returns (annualized not needed -- raw daily vol)
         returns = ticker_prices["close"].pct_change().dropna()
-        vol_25d = float(returns.tail(STOP_VOL_LOOKBACK).std())
+        vol_25d = float(returns.tail(STOP_VOL_LOOKBACK).ewm(span=STOP_VOL_LOOKBACK, adjust=False).std().iloc[-1])
         stop_distance = max(STOP_FLOOR, min(STOP_CAP, STOP_MULTIPLIER * vol_25d))
 
-        # True high since entry — anchor to entry_date, not a rolling window
+        # True high since entry -- anchor to entry_date, not a rolling window
         entry_date = row.get("entry_date", None)
         if pd.notna(entry_date):
             prices_since_entry = ticker_prices[
@@ -160,9 +163,9 @@ def compute_trailing_stops(prices: pd.DataFrame, portfolio: pd.DataFrame) -> pd.
 def check_trailing_stops(prices: pd.DataFrame) -> pd.DataFrame:
     """
     Evaluates trailing stops EOD against current close prices.
-    Skips positions opened today — need at least 1 day of seasoning.
+    Skips positions opened today -- need at least 1 day of seasoning.
     Returns DataFrame of tickers that have breached their stop price.
-    These are P2 priority trades — executed next market open.
+    These are P2 priority trades -- executed next market open.
     """
     from datetime import date as date_type
 
@@ -176,7 +179,7 @@ def check_trailing_stops(prices: pd.DataFrame) -> pd.DataFrame:
     if "stop_price" not in portfolio.columns:
         return pd.DataFrame()
 
-    # Skip positions opened today — stops need at least 1 day
+    # Skip positions opened today -- stops need at least 1 day
     today = date_type.today()
     if "entry_date" in portfolio.columns:
         portfolio_eval = portfolio[
@@ -220,23 +223,24 @@ def check_trailing_stops(prices: pd.DataFrame) -> pd.DataFrame:
 # DRIFT DETECTION
 # ------------------------------------------------------------
 
-def check_drift(target_weights: pd.DataFrame) -> dict:
+def check_drift(executed_weights: pd.DataFrame) -> dict:
     """
-    Compares current portfolio weights against target weights.
+    Compares current portfolio weights against last executed weights.
+    executed_weights comes from executed_weights.parquet -- only updated
+    after real trade execution (rebalance or stop exits), never by proposals.
     Flags positions, portfolio, and sectors that have drifted beyond thresholds.
-    target_weights: DataFrame with columns ticker, target_weight, sector
     Returns dict with position_drift, portfolio_drift, sector_drift flags.
     """
     portfolio = load_portfolio()
     nav_history = load_nav_history()
 
-    if portfolio.empty or nav_history.empty or target_weights.empty:
+    if portfolio.empty or nav_history.empty or executed_weights.empty:
         return {"position_drift": [], "portfolio_drift": False, "sector_drift": []}
 
     nav = float(nav_history.iloc[-1]["nav"])
     portfolio["current_weight"] = portfolio["market_value"] / nav
 
-    merged = portfolio.merge(target_weights, on="ticker", how="outer").fillna(0)
+    merged = portfolio.merge(executed_weights, on="ticker", how="outer").fillna(0)
     merged["drift"] = (merged["current_weight"] - merged["target_weight"]).abs()
 
     # Position-level drift
@@ -419,12 +423,11 @@ def run_risk_monitor(run_date: date = None) -> dict:
     if not stop_triggers_df.empty:
         stop_exits = stop_triggers_df["ticker"].tolist()
 
-    # Drift detection — compare current vs last target weights
+    # Drift detection -- compare current portfolio vs last executed weights
     drift_result = {"triggered": False, "position_drift": [], "portfolio_drift": False, "sector_drift": []}
-    target_path = Path("data/processed/target_weights.parquet")
-    if target_path.exists():
-        target_weights = pd.read_parquet(target_path)
-        drift_result = check_drift(target_weights)
+    if EXECUTED_WEIGHTS_PATH.exists():
+        executed_weights = pd.read_parquet(EXECUTED_WEIGHTS_PATH)
+        drift_result = check_drift(executed_weights)
         drift_result["triggered"] = bool(
             drift_result["position_drift"]
             or drift_result["portfolio_drift"]

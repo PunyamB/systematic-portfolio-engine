@@ -38,7 +38,7 @@ SECTOR_MAP = {
     "Consumer Defensive": "Consumer Staples",
 }
 
-# Sector pooling — sectors with < 30 stocks are pooled
+# Sector pooling \u2014 sectors with < 30 stocks are pooled
 SECTOR_POOLS = {
     "Materials":   "Materials_Industrials",
     "Industrials": "Materials_Industrials",
@@ -102,7 +102,7 @@ def compute_covariance(prices: pd.DataFrame, tickers: list) -> np.ndarray:
     returns = price_pivot.pct_change().dropna()
 
     if returns.shape[0] < 60 or returns.shape[1] < 2:
-        print("[optimizer] Insufficient return history — using diagonal covariance")
+        print("[optimizer] Insufficient return history \u2014 using diagonal covariance")
         n = len(tickers)
         return np.eye(n) * (0.20 ** 2 / 252)
 
@@ -224,19 +224,19 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
     nav_history  = load_nav_history()
 
     if signals.empty:
-        print("[optimizer] No signals — aborting")
-        notify("Optimizer failed — no signals available", level="critical")
+        print("[optimizer] No signals \u2014 aborting")
+        notify("Optimizer failed \u2014 no signals available", level="critical")
         return pd.DataFrame()
 
     nav = float(nav_history.iloc[-1]["nav"]) if not nav_history.empty else PF["initial_capital"]
 
     # ----------------------------------------------------------
-    # UNIVERSE SELECTION — top 50% by composite rank
+    # UNIVERSE SELECTION \u2014 top 50% by composite rank
     # ----------------------------------------------------------
     signals = signals[signals["composite_score"] != 0.0]  # exclude signal floor failures
     signals = signals.sort_values("composite_rank", ascending=False)
 
-    # Take top 50% — natural position count ~30-80 after optimization
+    # Take top 50% \u2014 natural position count ~30-80 after optimization
     top_n    = max(30, len(signals) // 2)
     universe = signals.head(top_n)
     tickers  = universe["ticker"].tolist()
@@ -244,12 +244,12 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
     print(f"[optimizer] Universe: {len(tickers)} tickers after signal filtering")
 
     if len(tickers) < 10:
-        print("[optimizer] Universe too small — aborting")
-        notify("Optimizer failed — universe too small", level="critical")
+        print("[optimizer] Universe too small \u2014 aborting")
+        notify("Optimizer failed \u2014 universe too small", level="critical")
         return pd.DataFrame()
 
     # ----------------------------------------------------------
-    # EXPECTED RETURNS — scaled composite score
+    # EXPECTED RETURNS \u2014 scaled composite score
     # ----------------------------------------------------------
     mu = universe.set_index("ticker")["composite_score"].reindex(tickers).fillna(0).values
     mu = mu / (np.std(mu) + 1e-8)  # normalize to unit std
@@ -268,9 +268,6 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
     # SPY WEIGHTS (for tracking error)
     # ----------------------------------------------------------
     n = len(tickers)
-    # SPY proxy: equal weight across full 503 constituents, subset to universe.
-    # Using total_constituents as denominator correctly represents active deviation
-    # from the full benchmark, not just the investable universe.
     total_constituents = len(constituents)
     w_spy = np.ones(n) / total_constituents  # 1/503 per ticker
 
@@ -297,19 +294,18 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
     constraints = [
         # Long only
         w >= 0,
-        # Max position size — 5% cap
+        # Max position size \u2014 5% cap
         w <= MAX_WEIGHT,
-        # Stay invested — leave cash buffer
+        # Stay invested \u2014 leave cash buffer
         cp.sum(w) <= 1.0 - CASH_BUFFER,
         cp.sum(w) >= 0.85,
-        # Max turnover per rebalance — skipped on first run (no existing portfolio)
+        # Max turnover per rebalance \u2014 skipped on first run (no existing portfolio)
         *([] if w_current.sum() == 0 else [turnover <= MAX_TURNOVER * 2]),
         # Tracking error cap vs SPY
         cp.quad_form(w_active, cp.psd_wrap(sigma)) <= TE_CAP ** 2,
     ]
 
     # Sector neutralization constraints
-    # Lower bound skipped if sector has too few tickers to meet it (feasibility guard)
     sector_groups  = build_sector_constraints(tickers, constituents)
     spy_sector_wts = compute_spy_sector_weights(constituents)
 
@@ -322,14 +318,12 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
         max_capacity  = len(indices) * MAX_WEIGHT
         lower_bound   = max(0, spy_wt - 0.05)
 
-        # Only apply constraints if sector has enough tickers to be feasible
         if max_capacity >= lower_bound:
             constraints.append(sector_weight >= lower_bound)
             constraints.append(sector_weight <= spy_wt + 0.05)
 
     problem = cp.Problem(objective, constraints)
 
-    # Try CLARABEL first, fall back to SCS
     for solver in [cp.CLARABEL, cp.SCS]:
         try:
             problem.solve(solver=solver, verbose=False)
@@ -340,18 +334,18 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
 
     if problem.status not in ["optimal", "optimal_inaccurate"]:
         print(f"[optimizer] Optimization failed: {problem.status}")
-        notify(f"Optimizer failed: {problem.status} — holding current portfolio", level="critical")
+        notify(f"Optimizer failed: {problem.status} \u2014 holding current portfolio", level="critical")
         return pd.DataFrame()
 
     if problem.status == "optimal_inaccurate":
-        print("[optimizer] Warning: optimal_inaccurate — using result with caution")
+        print("[optimizer] Warning: optimal_inaccurate \u2014 using result with caution")
 
     # ----------------------------------------------------------
     # PROCESS RESULTS
     # ----------------------------------------------------------
     weights = w.value
     if weights is None:
-        print("[optimizer] No weights returned — aborting")
+        print("[optimizer] No weights returned \u2014 aborting")
         return pd.DataFrame()
 
     # Zero out tiny weights below 0.1%
@@ -361,6 +355,9 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
     total = weights.sum()
     if total > 0:
         weights = weights / total * get_invested_target(cb_tier)
+
+    # Clip any weight pushed above max by renormalization
+    weights = np.minimum(weights, MAX_WEIGHT)
 
     # Build result DataFrame
     constituents_map = constituents.copy()
@@ -398,7 +395,7 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
 
 
 # ------------------------------------------------------------
-# STOP REPLACEMENT OPTIMIZER (cash deployment only)
+# STOP REPLACEMENT OPTIMIZER (cash deployment + overweight trim)
 # ------------------------------------------------------------
 
 STOP_REPLACEMENT_THRESHOLD = cfg.get("stop_replacement", {}).get("cash_threshold", 100000)
@@ -412,13 +409,14 @@ def run_stop_replacement_optimizer(
     excess_cash: float = 0.0,
 ) -> pd.DataFrame:
     """
-    Cash-deployment-only optimizer. Triggered after stop exits free up
-    excess cash (> $100K above CB-required cash).
+    Cash-deployment optimizer with overweight trim. Triggered when excess
+    cash exceeds $100K above CB-required cash.
 
     Key differences from full optimizer:
-    - w >= w_current for all existing positions (no selling)
+    - w >= min(w_current, MAX_WEIGHT): positions at/below 5% frozen,
+      overweight positions trimmed back to 5%
     - No sector neutralization (monthly rebalance restores it)
-    - No turnover constraint (turnover = cash deployed, naturally capped)
+    - No turnover constraint (turnover naturally capped by available cash + trims)
     - All other constraints apply: max weight, TE cap, CB invested target
 
     Returns DataFrame with columns: ticker, target_weight, sector
@@ -435,13 +433,13 @@ def run_stop_replacement_optimizer(
     nav_history  = load_nav_history()
 
     if signals.empty:
-        print("[optimizer] No signals â aborting stop replacement")
+        print("[optimizer] No signals \u2014 aborting stop replacement")
         return pd.DataFrame()
 
     nav = float(nav_history.iloc[-1]["nav"]) if not nav_history.empty else PF["initial_capital"]
 
     # ----------------------------------------------------------
-    # UNIVERSE SELECTION â same as full optimizer
+    # UNIVERSE SELECTION \u2014 same as full optimizer
     # ----------------------------------------------------------
     signals = signals[signals["composite_score"] != 0.0]
     signals = signals.sort_values("composite_rank", ascending=False)
@@ -453,7 +451,7 @@ def run_stop_replacement_optimizer(
     print(f"[optimizer] Universe: {len(tickers)} tickers")
 
     if len(tickers) < 10:
-        print("[optimizer] Universe too small â aborting")
+        print("[optimizer] Universe too small \u2014 aborting")
         return pd.DataFrame()
 
     # ----------------------------------------------------------
@@ -468,7 +466,7 @@ def run_stop_replacement_optimizer(
     sigma = compute_covariance(prices, tickers)
 
     # ----------------------------------------------------------
-    # CURRENT WEIGHTS (frozen as lower bounds)
+    # CURRENT WEIGHTS
     # ----------------------------------------------------------
     w_current = get_current_weights(tickers, nav)
 
@@ -483,6 +481,11 @@ def run_stop_replacement_optimizer(
     # INVESTED TARGET
     # ----------------------------------------------------------
     invested_target = get_invested_target(cb_tier)
+
+    # ----------------------------------------------------------
+    # LOWER BOUNDS: freeze at/below 5%, allow trim above 5%
+    # ----------------------------------------------------------
+    w_lower = np.minimum(w_current, MAX_WEIGHT)
 
     # ----------------------------------------------------------
     # CVXPY OPTIMIZATION
@@ -502,8 +505,8 @@ def run_stop_replacement_optimizer(
         w >= 0,
         # Max position size
         w <= MAX_WEIGHT,
-        # CORE CONSTRAINT: cannot sell existing positions
-        w >= w_current,
+        # Freeze positions at/below 5%, trim overweight to 5%
+        w >= w_lower,
         # Stay invested up to CB-adjusted target
         cp.sum(w) <= invested_target,
         cp.sum(w) >= max(0.30, invested_target - 0.13),
@@ -512,7 +515,7 @@ def run_stop_replacement_optimizer(
     ]
 
     # NO sector neutralization for stop replacements
-    # NO turnover constraint â turnover = cash deployed
+    # NO turnover constraint \u2014 turnover = cash deployed + trims
 
     problem = cp.Problem(objective, constraints)
 
@@ -543,6 +546,9 @@ def run_stop_replacement_optimizer(
     if total > 0:
         weights = weights / total * invested_target
 
+    # Clip any weight pushed above max by renormalization
+    weights = np.minimum(weights, MAX_WEIGHT)
+
     constituents_map = constituents.copy()
     constituents_map["sector_mapped"] = constituents_map["sector"].replace(SECTOR_MAP)
 
@@ -561,13 +567,14 @@ def run_stop_replacement_optimizer(
     n_new = len(result) - sum(1 for t in result["ticker"] if t in
                                [tickers[i] for i in range(n) if w_current[i] > 0.001])
     cash_deployed = (weights.sum() - w_current.sum()) * nav
+    n_trimmed = sum(1 for i in range(n) if w_current[i] > MAX_WEIGHT and weights[i] < w_current[i])
 
     print(f"[optimizer] Stop replacement: {len(result)} positions | "
-          f"{n_new} new | cash deployed: ${cash_deployed:,.0f}")
+          f"{n_new} new | {n_trimmed} trimmed | cash deployed: ${cash_deployed:,.0f}")
 
     notify(
         f"Stop replacement optimizer complete for {run_date}\n"
-        f"Positions: {len(result)} | New: {n_new}\n"
+        f"Positions: {len(result)} | New: {n_new} | Trimmed: {n_trimmed}\n"
         f"Cash deployed: ${cash_deployed:,.0f}",
         level="info"
     )

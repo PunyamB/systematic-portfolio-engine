@@ -25,9 +25,41 @@ from execution.order_manager import (
     FILL_WAIT_SECS,
 )
 from compliance.checker import run_pre_trade_checks, run_post_trade_checks
-from data.storage import load_prices, append_execution_log
+from data.storage import load_prices, load_portfolio, append_execution_log
+from fund_accounting.nav import load_nav_history
 from utils.notifications import notify
 import time
+
+EXECUTED_WEIGHTS_PATH = Path("data/processed/executed_weights.parquet")
+
+
+def _save_executed_weights() -> None:
+    """
+    Snapshots current portfolio weights to executed_weights.parquet.
+    This is the anchor for drift detection -- only updated after real
+    trade execution (rebalance or stop exits), never by proposals.
+    """
+    portfolio = load_portfolio()
+    if portfolio.empty:
+        return
+
+    nav_history = load_nav_history()
+    if nav_history.empty:
+        return
+
+    nav = float(nav_history.iloc[-1]["nav"])
+    if nav <= 0:
+        return
+
+    weights = portfolio[["ticker"]].copy()
+    weights["target_weight"] = portfolio["market_value"] / nav
+
+    # Include sector if available
+    if "sector" in portfolio.columns:
+        weights["sector"] = portfolio["sector"]
+
+    weights.to_parquet(EXECUTED_WEIGHTS_PATH, index=False)
+    print(f"[execute] Executed weights saved: {len(weights)} positions")
 
 
 def run_execution(run_date: date = None) -> dict:
@@ -39,9 +71,10 @@ def run_execution(run_date: date = None) -> dict:
     4. Wait for fills
     5. Confirm fills + compute slippage
     6. Update internal portfolio
-    7. Run post-trade compliance checks
-    8. Reconcile with Alpaca
-    9. Log everything to execution_log.parquet
+    7. Save executed weights (drift detection anchor)
+    8. Run post-trade compliance checks
+    9. Reconcile with Alpaca
+    10. Log everything to execution_log.parquet
     """
     if run_date is None:
         run_date = date.today()
@@ -51,11 +84,11 @@ def run_execution(run_date: date = None) -> dict:
     print(f"[execute] ============================================================\n")
 
     # ----------------------------------------------------------
-    # STEP 1 — Load approved trades
+    # STEP 1 -- Load approved trades
     # ----------------------------------------------------------
     approved = load_approved_trades(run_date)
     if approved.empty:
-        print("[execute] No approved trades found — nothing to execute")
+        print("[execute] No approved trades found -- nothing to execute")
         print(f"[execute] Expected file: data/approved/{run_date.strftime('%Y%m%d')}_approved_trades.csv")
         print(f"[execute] Run 'python approve.py' first")
         return {"submitted": 0, "filled": 0, "skipped": True}
@@ -63,25 +96,25 @@ def run_execution(run_date: date = None) -> dict:
     print(f"[execute] Loaded {len(approved)} approved trades")
 
     # ----------------------------------------------------------
-    # STEP 2 — Pre-trade compliance
+    # STEP 2 -- Pre-trade compliance
     # ----------------------------------------------------------
     print("\n[execute] Running pre-trade compliance checks...")
     compliance_results = run_pre_trade_checks(approved)
     failures = [r for r in compliance_results if not r.passed]
 
     if failures:
-        print("[execute] Pre-trade compliance FAILED — aborting execution")
+        print("[execute] Pre-trade compliance FAILED -- aborting execution")
         for f in failures:
             print(f"  {f}")
         notify(
-            f"Execution aborted — pre-trade compliance failed\n"
+            f"Execution aborted -- pre-trade compliance failed\n"
             + "\n".join(str(f) for f in failures),
             level="critical"
         )
         return {"submitted": 0, "filled": 0, "skipped": False, "reason": "compliance"}
 
     # ----------------------------------------------------------
-    # STEP 3 — Submit orders
+    # STEP 3 -- Submit orders
     # ----------------------------------------------------------
     print("\n[execute] Submitting orders to Alpaca...")
     submitted = submit_orders(approved)
@@ -93,13 +126,13 @@ def run_execution(run_date: date = None) -> dict:
     print(f"[execute] {len(submitted)} orders submitted")
 
     # ----------------------------------------------------------
-    # STEP 4 — Wait for fills
+    # STEP 4 -- Wait for fills
     # ----------------------------------------------------------
     print(f"[execute] Waiting {FILL_WAIT_SECS}s for fills...")
     time.sleep(FILL_WAIT_SECS)
 
     # ----------------------------------------------------------
-    # STEP 5 — Confirm fills + compute slippage
+    # STEP 5 -- Confirm fills + compute slippage
     # ----------------------------------------------------------
     fills = confirm_fills(submitted)
 
@@ -131,12 +164,17 @@ def run_execution(run_date: date = None) -> dict:
         fills["executed_at"]    = datetime.now().isoformat()
 
     # ----------------------------------------------------------
-    # STEP 6 — Update portfolio
+    # STEP 6 -- Update portfolio
     # ----------------------------------------------------------
     update_portfolio_from_fills(fills)
 
     # ----------------------------------------------------------
-    # STEP 7 — Post-trade compliance
+    # STEP 7 -- Save executed weights (drift detection anchor)
+    # ----------------------------------------------------------
+    _save_executed_weights()
+
+    # ----------------------------------------------------------
+    # STEP 8 -- Post-trade compliance
     # ----------------------------------------------------------
     print("\n[execute] Running post-trade compliance checks...")
     post_results = run_post_trade_checks()
@@ -147,13 +185,13 @@ def run_execution(run_date: date = None) -> dict:
             print(f"  {f}")
 
     # ----------------------------------------------------------
-    # STEP 8 — Reconcile with Alpaca
+    # STEP 9 -- Reconcile with Alpaca
     # ----------------------------------------------------------
     print("\n[execute] Reconciling with Alpaca...")
     reconcile_with_alpaca()
 
     # ----------------------------------------------------------
-    # STEP 9 — Log execution
+    # STEP 10 -- Log execution
     # ----------------------------------------------------------
     if not fills.empty:
         append_execution_log(fills)
