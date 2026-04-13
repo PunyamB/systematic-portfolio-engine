@@ -1,24 +1,21 @@
 # pipeline/runner.py
 # Master pipeline orchestrator.
-# Runs the full daily pipeline in the correct sequence.
-# Daily stages run every day.
-# Rebalance stages only run on rebalance days or when drift/risk triggers fire.
 #
 # Sequence:
 # 1. Broker health check
 # 1.5. Reconcile internal portfolio with Alpaca (ground truth)
 # 2. Corporate actions
 # 3. Data refresh
-# 4. NAV calculation
+# 4. Reprice portfolio + NAV
 # 5. Regime detection
 # 6. Risk monitoring (circuit breaker, trailing stops, drift)
-# 6b. Save stop exits to file (execution is separate: execute_stops.py)
-# 7. Signal computation (daily)
-# 8. Signal decay tracking (between rebalances)
-# 9. [REBALANCE ONLY] Optimizer + stop/trade deduplication
-# 10. [REBALANCE ONLY] Write proposed_trades.csv + Slack notification
+# 6b. Save stop exits to file (execute via: python execute_stops.py)
+# 7. Signal computation
+# 8. Signal decay tracking
+# 9. [REBALANCE/DRIFT/DECAY] Optimizer
+# 10. [REBALANCE/DRIFT/DECAY] Write proposed_trades.csv
 # 11. Portfolio history snapshot
-# 12. Deploy excess cash (runs every day, cooldown + threshold gate inside)
+# 12. Check excess cash, write replacement proposal (execute via: python execute_replacement.py)
 # 13. Decision log + pipeline health
 # 14. Action summary
 
@@ -64,16 +61,13 @@ EXECUTED_WEIGHTS_PATH = Path("data/processed/executed_weights.parquet")
 # ------------------------------------------------------------
 
 def _acquire_lock() -> bool:
-    """Creates pipeline_running.flag. Returns False if already running."""
     if FLAG_FILE.exists():
         print("[runner] Pipeline already running \u2014 flag file exists. Aborting.")
         return False
     FLAG_FILE.touch()
     return True
 
-
 def _release_lock():
-    """Removes pipeline_running.flag."""
     FLAG_FILE.unlink(missing_ok=True)
 
 
@@ -120,7 +114,6 @@ class PipelineHealth:
 
 
 def _run_stage(health: PipelineHealth, stage: str, fn, *args, **kwargs):
-    """Runs a pipeline stage with timing and error handling."""
     t0 = time.time()
     try:
         result = fn(*args, **kwargs)
@@ -138,32 +131,23 @@ def _run_stage(health: PipelineHealth, stage: str, fn, *args, **kwargs):
 # ------------------------------------------------------------
 
 def _reprice_portfolio(run_date: date) -> None:
-    """
-    Updates market_value and unrealized_pnl for all positions
-    using latest close prices.
-    """
     portfolio = load_portfolio()
     if portfolio.empty:
         return
-
     prices = load_prices()
     if prices.empty:
         return
 
     latest = (
         prices.sort_values("date")
-        .groupby("ticker")
-        .last()
+        .groupby("ticker").last()
         .reset_index()[["ticker", "close"]]
     )
-
     portfolio = portfolio.merge(latest, on="ticker", how="left", suffixes=("", "_latest"))
     close_col = "close_latest" if "close_latest" in portfolio.columns else "close"
 
     mask = portfolio[close_col].notna()
-    portfolio.loc[mask, "market_value"] = (
-        portfolio.loc[mask, "shares"] * portfolio.loc[mask, close_col]
-    )
+    portfolio.loc[mask, "market_value"] = portfolio.loc[mask, "shares"] * portfolio.loc[mask, close_col]
 
     if "cost_basis" in portfolio.columns:
         portfolio.loc[mask, "unrealized_pnl"] = (
@@ -171,51 +155,13 @@ def _reprice_portfolio(run_date: date) -> None:
             - portfolio.loc[mask, "shares"] * portfolio.loc[mask, "cost_basis"]
         )
 
-    portfolio = portfolio.drop(
-        columns=[c for c in portfolio.columns if c.endswith("_latest")],
-        errors="ignore"
-    )
-
+    portfolio = portfolio.drop(columns=[c for c in portfolio.columns if c.endswith("_latest")], errors="ignore")
     from data.storage import save_portfolio
     save_portfolio(portfolio)
 
 
 # ------------------------------------------------------------
-# SAVE EXECUTED WEIGHTS SNAPSHOT
-# ------------------------------------------------------------
-
-def _save_executed_weights_snapshot() -> None:
-    """
-    Snapshots current portfolio weights to executed_weights.parquet.
-    Called after any real trade execution: rebalance, stop exits, stop replacement.
-    This is the drift detection anchor.
-    """
-    import pandas as pd
-
-    portfolio = load_portfolio()
-    if portfolio.empty:
-        return
-
-    nav_history = load_nav_history()
-    if nav_history.empty:
-        return
-
-    nav = float(nav_history.iloc[-1]["nav"])
-    if nav <= 0:
-        return
-
-    weights = portfolio[["ticker"]].copy()
-    weights["target_weight"] = portfolio["market_value"] / nav
-
-    if "sector" in portfolio.columns:
-        weights["sector"] = portfolio["sector"]
-
-    weights.to_parquet(EXECUTED_WEIGHTS_PATH, index=False)
-    print(f"[runner] Executed weights snapshot saved: {len(weights)} positions")
-
-
-# ------------------------------------------------------------
-# STOP REPLACEMENT COOLDOWN + TRIGGER
+# STOP REPLACEMENT — PROPOSAL ONLY (execution via execute_replacement.py)
 # ------------------------------------------------------------
 
 REPLACEMENT_COOLDOWN_FILE = Path("data/stops/last_replacement.json")
@@ -224,10 +170,8 @@ REPLACEMENT_CASH_THRESHOLD = cfg.get("stop_replacement", {}).get("cash_threshold
 
 
 def _check_replacement_cooldown(run_date: date) -> bool:
-    """Returns True if cooldown has passed (ok to run replacement)."""
     if not REPLACEMENT_COOLDOWN_FILE.exists():
         return True
-
     try:
         with open(REPLACEMENT_COOLDOWN_FILE) as f:
             data = json.load(f)
@@ -239,18 +183,12 @@ def _check_replacement_cooldown(run_date: date) -> bool:
         return True
 
 
-def _record_replacement(run_date: date) -> None:
-    """Records that a stop replacement ran on this date."""
-    REPLACEMENT_COOLDOWN_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(REPLACEMENT_COOLDOWN_FILE, "w") as f:
-        json.dump({"last_replacement_date": str(run_date)}, f)
-
-
 def _run_stop_replacement(run_date: date, regime: str, cb_tier: int,
                           nav: float, cash: float, health: PipelineHealth) -> None:
     """
-    Checks if excess cash warrants a stop replacement rebalance.
-    If triggered, runs cash-deployment-only optimizer and auto-executes.
+    Checks if excess cash warrants a replacement. If triggered, runs
+    the cash-deployment optimizer and writes a proposal file.
+    Execution is manual via: python execute_replacement.py
     """
     import pandas as pd
 
@@ -281,7 +219,7 @@ def _run_stop_replacement(run_date: date, regime: str, cb_tier: int,
         health.record("stop_replacement", "skipped", time.time() - t0, "optimizer returned empty")
         return
 
-    # Generate trades: buys for new/increased positions, sells for overweight trims
+    # Generate trade list from optimizer output
     nav_history = load_nav_history()
     nav_val = float(nav_history.iloc[-1]["nav"]) if not nav_history.empty else nav
     portfolio = load_portfolio()
@@ -336,47 +274,28 @@ def _run_stop_replacement(run_date: date, regime: str, cb_tier: int,
         health.record("stop_replacement", "skipped", time.time() - t0, "no viable trades")
         return
 
+    # Write proposal file (NOT auto-execute)
     trades_df = pd.DataFrame(trades)
+    PROPOSED_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = PROPOSED_DIR / f"replacement_trades_{run_date}.csv"
+    trades_df.to_csv(out_path, index=False)
+
     n_buys = len(trades_df[trades_df["trade_type"] == "buy"])
     n_sells = len(trades_df[trades_df["trade_type"] == "sell"])
-    print(f"[runner] Stop replacement: submitting {len(trades_df)} orders ({n_buys} buys, {n_sells} trims)")
 
-    try:
-        submitted = submit_orders(trades_df)
-        if submitted.empty:
-            health.record("stop_replacement", "failed", time.time() - t0, "no orders submitted")
-            notify(f"Stop replacement FAILED for {run_date} -- no orders submitted", level="critical")
-            return
+    health.record("stop_replacement", "success", time.time() - t0,
+                   f"{len(trades_df)} trades proposed ({n_buys} buys, {n_sells} trims)")
 
-        print(f"[runner] Waiting 30s for stop replacement fills...")
-        time.sleep(30)
+    print(f"[runner] Replacement trades proposed: {len(trades_df)} ({n_buys} buys, {n_sells} trims)")
+    print(f"[runner] \u2192 Execute with: python execute_replacement.py")
 
-        fills = confirm_fills(submitted)
-        update_portfolio_from_fills(fills)
-
-        filled_count = int(fills["filled"].sum()) if not fills.empty and "filled" in fills.columns else 0
-
-        _record_replacement(run_date)
-        _save_executed_weights_snapshot()
-
-        health.record("stop_replacement", "success", time.time() - t0,
-                       f"{filled_count}/{len(submitted)} filled, deployed ${excess_cash:,.0f}")
-
-        tickers_bought = trades_df["ticker"].tolist()
-        notify(
-            f"Stop REPLACEMENT executed for {run_date}\n"
-            f"Buys: {filled_count}/{len(submitted)} filled\n"
-            f"Tickers: {tickers_bought}\n"
-            f"Cash deployed: ~${excess_cash:,.0f}",
-            level="info"
-        )
-
-        print(f"[runner] Stop replacement complete: {filled_count}/{len(submitted)} filled")
-
-    except Exception as e:
-        health.record("stop_replacement", "failed", time.time() - t0, str(e))
-        notify(f"Stop replacement FAILED: {e}", level="critical")
-        print(f"[runner] Stop replacement failed: {e}")
+    notify(
+        f"Stop replacement proposed for {run_date}\n"
+        f"Excess cash: ${excess_cash:,.0f}\n"
+        f"Trades: {len(trades_df)} ({n_buys} buys, {n_sells} trims)\n"
+        f"To execute: python execute_replacement.py",
+        level="info"
+    )
 
 
 # ------------------------------------------------------------
@@ -384,19 +303,12 @@ def _run_stop_replacement(run_date: date, regime: str, cb_tier: int,
 # ------------------------------------------------------------
 
 def _reconcile_stops_and_trades(stop_exits: list, target_weights) -> object:
-    """
-    Removes stop-triggered tickers from proposed trades.
-    Prevents same-day rebuy of positions that are pending stop execution.
-    """
     if not stop_exits or target_weights is None or target_weights.empty:
         return target_weights
-
     filtered = target_weights[~target_weights["ticker"].isin(stop_exits)].copy()
     removed  = [t for t in stop_exits if t in target_weights["ticker"].values]
-
     if removed:
         print(f"[runner] Removed from proposed trades (stop triggered): {removed}")
-
     return filtered
 
 
@@ -406,10 +318,9 @@ def _reconcile_stops_and_trades(stop_exits: list, target_weights) -> object:
 
 def write_proposed_trades(target_weights, run_date: date, regime: str) -> Path:
     """
-    Writes optimizer output to data/proposed/proposed_trades_YYYY-MM-DD.csv.
-    Sends Slack notification for manual review and approval.
-    NOTE: Does NOT write to any weights file. Drift anchor (executed_weights.parquet)
-    is only updated after actual trade execution via execute.py.
+    Writes optimizer output to proposed_trades CSV.
+    Does NOT write to any weights file. Drift anchor is only
+    updated after actual execution via execute.py.
     """
     import pandas as pd
 
@@ -498,10 +409,6 @@ def write_proposed_trades(target_weights, run_date: date, regime: str) -> Path:
 # ------------------------------------------------------------
 
 def _print_action_summary(run_date: date, stop_exits: list = None) -> None:
-    """
-    Prints a clean action summary at the end of every pipeline run.
-    Shows triggered stop losses and proposed trades with next steps.
-    """
     import pandas as pd
 
     portfolio = load_portfolio()
@@ -511,6 +418,7 @@ def _print_action_summary(run_date: date, stop_exits: list = None) -> None:
     print("  ACTION SUMMARY")
     print("=" * 62)
 
+    # Stop losses
     stops = stop_exits if stop_exits else []
     if stops and not portfolio.empty and not prices.empty:
         latest = (
@@ -540,6 +448,7 @@ def _print_action_summary(run_date: date, stop_exits: list = None) -> None:
     else:
         print("\n  STOP LOSSES:     none triggered")
 
+    # Proposed rebalance trades
     proposed_file = PROPOSED_DIR / f"proposed_trades_{run_date}.csv"
     if proposed_file.exists():
         trades   = pd.read_csv(proposed_file)
@@ -559,6 +468,19 @@ def _print_action_summary(run_date: date, stop_exits: list = None) -> None:
     else:
         print("\n  PROPOSED TRADES: none")
 
+    # Replacement trades (cash deployment)
+    repl_file = PROPOSED_DIR / f"replacement_trades_{run_date}.csv"
+    if repl_file.exists():
+        repl = pd.read_csv(repl_file)
+        n_buys  = len(repl[repl["trade_type"] == "buy"])
+        n_sells = len(repl[repl["trade_type"] == "sell"])
+        print(f"\n  CASH DEPLOYMENT \u2014 {len(repl)} trades ({n_buys} buys, {n_sells} trims)")
+        print(f"  {'Ticker':<8} {'Side':<6} {'Shares':>8}")
+        print(f"  {'-'*8} {'-'*6} {'-'*8}")
+        for _, row in repl.iterrows():
+            print(f"  {row['ticker']:<8} {row['trade_type']:<6} {int(row['shares']):>8}")
+        print(f"\n  \u2192 Run: python execute_replacement.py")
+
     print("\n" + "=" * 62 + "\n")
 
 
@@ -569,10 +491,8 @@ def _print_action_summary(run_date: date, stop_exits: list = None) -> None:
 def run_pipeline(run_date: date = None, force_rebalance: bool = False) -> dict:
     if run_date is None:
         run_date = date.today()
-
     if not _acquire_lock():
         return {"status": "aborted", "reason": "already_running"}
-
     try:
         return _run_pipeline_inner(run_date, force_rebalance)
     finally:
@@ -673,10 +593,8 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
 
         if cb_level >= 1:
             print(f"[runner] Circuit breaker T{cb_level} active")
-
         if stop_exits:
             print(f"[runner] Trailing stop exits: {stop_exits}")
-
         if drift_result_d.get("triggered"):
             drift_trigger = True
             print(f"[runner] Drift trigger detected \u2014 interim rebalance needed")
@@ -714,7 +632,7 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
         decision["n_signals_scored"] = len(signals)
 
     # ----------------------------------------------------------
-    # STAGE 8 \u2014 Signal decay tracking (between rebalances)
+    # STAGE 8 \u2014 Signal decay tracking
     # ----------------------------------------------------------
     decay_result  = _run_stage(health, "decay_tracker", run_decay_tracker, run_date)
     decay_trigger = False
@@ -745,13 +663,11 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
 
             target_weights = _reconcile_stops_and_trades(stop_exits, target_weights)
 
-            # Stage 10 \u2014 Write proposed trades (does NOT update drift anchor)
             proposed_path = _run_stage(
                 health, "proposed_trades",
                 write_proposed_trades, target_weights, run_date, regime
             )
             decision["proposed_trades_file"] = str(proposed_path) if proposed_path else ""
-
         else:
             health.record("proposed_trades", "skipped", 0, "optimizer returned empty")
 
@@ -776,7 +692,7 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
     decision["n_held_positions"] = len(portfolio) if not portfolio.empty else 0
 
     # ----------------------------------------------------------
-    # STAGE 12 \u2014 Deploy excess cash (runs every day, cooldown + threshold gate inside)
+    # STAGE 12 \u2014 Check excess cash, write replacement proposal
     # ----------------------------------------------------------
     _nav_h = load_nav_history()
     _current_nav = float(_nav_h.iloc[-1]["nav"]) if not _nav_h.empty else nav_val
