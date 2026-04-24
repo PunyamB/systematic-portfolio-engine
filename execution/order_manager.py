@@ -334,6 +334,18 @@ def reconcile_with_alpaca() -> pd.DataFrame:
 
         save_portfolio(portfolio)
 
+    # Sync cash from Alpaca (ground truth)
+    try:
+        account = client.get_account()
+        alpaca_cash = float(account.cash)
+        from fund_accounting.nav import load_cash, save_cash
+        internal_cash = load_cash()
+        if abs(alpaca_cash - internal_cash) > 1.0:
+            save_cash(alpaca_cash)
+            print(f"[execution] Cash synced from Alpaca: ${alpaca_cash:,.2f} (was ${internal_cash:,.2f})")
+    except Exception as e:
+        print(f"[execution] Cash sync failed: {e}")
+
     print(f"[execution] Reconciliation complete: {len(alpaca_df)} Alpaca positions")
     return alpaca_df
 
