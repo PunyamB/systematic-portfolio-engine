@@ -1,0 +1,602 @@
+{
+  "spy": {
+    "n_forecast_days": 7870,
+    "rolling_xi_range": [
+      -0.8817687041359191,
+      0.8518313315243966
+    ],
+    "backtest": {
+      "95.0%": {
+        "Gaussian": {
+          "n_obs": 7870,
+          "n_violations": 445,
+          "violation_rate": 0.056543837357052096,
+          "expected_rate": 0.050000000000000044,
+          "kupiec": {
+            "statistic": 6.819522942794606,
+            "p_value": 0.009016665077117847,
+            "pass": false,
+            "violation_rate": 0.056543837357052096,
+            "expected_rate": 0.050000000000000044,
+            "n_violations": 445
+          },
+          "christoffersen": {
+            "statistic": 23.721474965894714,
+            "p_value": 1.1133328150503274e-06,
+            "pass": false
+          }
+        },
+        "Historical Sim": {
+          "n_obs": 7870,
+          "n_violations": 434,
+          "violation_rate": 0.055146124523506986,
+          "expected_rate": 0.050000000000000044,
+          "kupiec": {
+            "statistic": 4.252073327789617,
+            "p_value": 0.0392024421304068,
+            "pass": false,
+            "violation_rate": 0.055146124523506986,
+            "expected_rate": 0.050000000000000044,
+            "n_violations": 434
+          },
+          "christoffersen": {
+            "statistic": 28.60426824874591,
+            "p_value": 8.878626001074252e-08,
+            "pass": false
+          }
+        },
+        "Cornish-Fisher": {
+          "n_obs": 7870,
+          "n_violations": 452,
+          "violation_rate": 0.057433290978398985,
+          "expected_rate": 0.050000000000000044,
+          "kupiec": {
+            "statistic": 8.754338001555766,
+            "p_value": 0.003088664703105981,
+            "pass": false,
+            "violation_rate": 0.057433290978398985,
+            "expected_rate": 0.050000000000000044,
+            "n_violations": 452
+          },
+          "christoffersen": {
+            "statistic": 23.507300885647965,
+            "p_value": 1.2444065357053447e-06,
+            "pass": false
+          }
+        },
+        "Filtered HS": {
+          "n_obs": 7870,
+          "n_violations": 440,
+          "violation_rate": 0.05590851334180432,
+          "expected_rate": 0.050000000000000044,
+          "kupiec": {
+            "statistic": 5.580227590556433,
+            "p_value": 0.018164361983866284,
+            "pass": false,
+            "violation_rate": 0.05590851334180432,
+            "expected_rate": 0.050000000000000044,
+            "n_violations": 440
+          },
+          "christoffersen": {
+            "statistic": 28.642178560847128,
+            "p_value": 8.706494192267655e-08,
+            "pass": false
+          }
+        },
+        "EVT-GPD": {
+          "n_obs": 7870,
+          "n_violations": 434,
+          "violation_rate": 0.055146124523506986,
+          "expected_rate": 0.050000000000000044,
+          "kupiec": {
+            "statistic": 4.252073327789617,
+            "p_value": 0.0392024421304068,
+            "pass": false,
+            "violation_rate": 0.055146124523506986,
+            "expected_rate": 0.050000000000000044,
+            "n_violations": 434
+          },
+          "christoffersen": {
+            "statistic": 30.471980546403074,
+            "p_value": 3.387235814056311e-08,
+            "pass": false
+          }
+        }
+      },
+      "99.0%": {
+        "Gaussian": {
+          "n_obs": 7870,
+          "n_violations": 192,
+          "violation_rate": 0.02439644218551461,
+          "expected_rate": 0.010000000000000009,
+          "kupiec": {
+            "statistic": 117.52688893902689,
+            "p_value": 0.0,
+            "pass": false,
+            "violation_rate": 0.02439644218551461,
+            "expected_rate": 0.010000000000000009,
+            "n_violations": 192
+          },
+          "christoffersen": {
+            "statistic": 23.79106048962602,
+            "p_value": 1.073800182660456e-06,
+            "pass": false
+          }
+        },
+        "Historical Sim": {
+          "n_obs": 7870,
+          "n_violations": 127,
+          "violation_rate": 0.01613722998729352,
+          "expected_rate": 0.010000000000000009,
+          "kupiec": {
+            "statistic": 25.250201569376088,
+            "p_value": 5.035430715727429e-07,
+            "pass": false,
+            "violation_rate": 0.01613722998729352,
+            "expected_rate": 0.010000000000000009,
+            "n_violations": 127
+          },
+          "christoffersen": {
+            "statistic": 32.27890229381831,
+            "p_value": 1.3355562322736603e-08,
+            "pass": false
+          }
+        },
+        "Cornish-Fisher": {
+          "n_obs": 7870,
+          "n_violations": 84,
+          "violation_rate": 0.010673443456162644,
+          "expected_rate": 0.010000000000000009,
+          "kupiec": {
+            "statistic": 0.3527782156801038,
+            "p_value": 0.5525446471883426,
+            "pass": true,
+            "violation_rate": 0.010673443456162644,
+            "expected_rate": 0.010000000000000009,
+            "n_violations": 84
+          },
+          "christoffersen": {
+            "statistic": 13.246515594466416,
+            "p_value": 0.00027308702015593767,
+            "pass": false
+          }
+        },
+        "Filtered HS": {
+          "n_obs": 7870,
+          "n_violations": 134,
+          "violation_rate": 0.017026683608640406,
+          "expected_rate": 0.010000000000000009,
+          "kupiec": {
+            "statistic": 32.422133264611716,
+            "p_value": 1.2406533245190587e-08,
+            "pass": false,
+            "violation_rate": 0.017026683608640406,
+            "expected_rate": 0.010000000000000009,
+            "n_violations": 134
+          },
+          "christoffersen": {
+            "statistic": 33.615817752797156,
+            "p_value": 6.7144487747583526e-09,
+            "pass": false
+          }
+        },
+        "EVT-GPD": {
+          "n_obs": 7870,
+          "n_violations": 119,
+          "violation_rate": 0.015120711562897078,
+          "expected_rate": 0.010000000000000009,
+          "kupiec": {
+            "statistic": 18.01712986647351,
+            "p_value": 2.1892610670981583e-05,
+            "pass": false,
+            "violation_rate": 0.015120711562897078,
+            "expected_rate": 0.010000000000000009,
+            "n_violations": 119
+          },
+          "christoffersen": {
+            "statistic": 26.97855597161444,
+            "p_value": 2.0572519987549498e-07,
+            "pass": false
+          }
+        }
+      },
+      "99.5%": {
+        "Gaussian": {
+          "n_obs": 7870,
+          "n_violations": 142,
+          "violation_rate": 0.01804320203303685,
+          "expected_rate": 0.0050000000000000044,
+          "kupiec": {
+            "statistic": 160.51755885911638,
+            "p_value": 0.0,
+            "pass": false,
+            "violation_rate": 0.01804320203303685,
+            "expected_rate": 0.0050000000000000044,
+            "n_violations": 142
+          },
+          "christoffersen": {
+            "statistic": 26.618535189286362,
+            "p_value": 2.47854494261901e-07,
+            "pass": false
+          }
+        },
+        "Historical Sim": {
+          "n_obs": 7870,
+          "n_violations": 75,
+          "violation_rate": 0.009529860228716646,
+          "expected_rate": 0.0050000000000000044,
+          "kupiec": {
+            "statistic": 25.611368683862935,
+            "p_value": 4.1757194402247677e-07,
+            "pass": false,
+            "violation_rate": 0.009529860228716646,
+            "expected_rate": 0.0050000000000000044,
+            "n_violations": 75
+          },
+          "christoffersen": {
+            "statistic": 15.733460172334176,
+            "p_value": 7.292274767078943e-05,
+            "pass": false
+          }
+        },
+        "Cornish-Fisher": {
+          "n_obs": 7870,
+          "n_violations": 55,
+          "violation_rate": 0.00698856416772554,
+          "expected_rate": 0.0050000000000000044,
+          "kupiec": {
+            "statistic": 5.563391414315362,
+            "p_value": 0.01833985272385208,
+            "pass": false,
+            "violation_rate": 0.00698856416772554,
+            "expected_rate": 0.0050000000000000044,
+            "n_violations": 55
+          },
+          "christoffersen": {
+            "statistic": 11.998673523128645,
+            "p_value": 0.0005323843036519893,
+            "pass": false
+          }
+        },
+        "Filtered HS": {
+          "n_obs": 7870,
+          "n_violations": 82,
+          "violation_rate": 0.010419313850063533,
+          "expected_rate": 0.0050000000000000044,
+          "kupiec": {
+            "statistic": 35.34533477333346,
+            "p_value": 2.761291861830273e-09,
+            "pass": false,
+            "violation_rate": 0.010419313850063533,
+            "expected_rate": 0.0050000000000000044,
+            "n_violations": 82
+          },
+          "christoffersen": {
+            "statistic": 13.76731814861278,
+            "p_value": 0.00020690449018168078,
+            "pass": false
+          }
+        },
+        "EVT-GPD": {
+          "n_obs": 7870,
+          "n_violations": 67,
+          "violation_rate": 0.008513341804320203,
+          "expected_rate": 0.0050000000000000044,
+          "kupiec": {
+            "statistic": 16.112097544028728,
+            "p_value": 5.97014497858428e-05,
+            "pass": false,
+            "violation_rate": 0.008513341804320203,
+            "expected_rate": 0.0050000000000000044,
+            "n_violations": 67
+          },
+          "christoffersen": {
+            "statistic": 18.294242431803898,
+            "p_value": 1.8927836923032793e-05,
+            "pass": false
+          }
+        }
+      }
+    }
+  },
+  "meridian": {
+    "n_forecast_days": 4797,
+    "rolling_xi_range": [
+      -0.7681147116727677,
+      0.6486773624210959
+    ],
+    "backtest": {
+      "95.0%": {
+        "Gaussian": {
+          "n_obs": 4797,
+          "n_violations": 270,
+          "violation_rate": 0.05628517823639775,
+          "expected_rate": 0.050000000000000044,
+          "kupiec": {
+            "statistic": 3.8403578375273355,
+            "p_value": 0.05003284211646408,
+            "pass": true,
+            "violation_rate": 0.05628517823639775,
+            "expected_rate": 0.050000000000000044,
+            "n_violations": 270
+          },
+          "christoffersen": {
+            "statistic": 18.18464643454351,
+            "p_value": 2.0048860392973822e-05,
+            "pass": false
+          }
+        },
+        "Historical Sim": {
+          "n_obs": 4797,
+          "n_violations": 262,
+          "violation_rate": 0.05461746925161559,
+          "expected_rate": 0.050000000000000044,
+          "kupiec": {
+            "statistic": 2.0931613189673612,
+            "p_value": 0.1479596198501093,
+            "pass": true,
+            "violation_rate": 0.05461746925161559,
+            "expected_rate": 0.050000000000000044,
+            "n_violations": 262
+          },
+          "christoffersen": {
+            "statistic": 18.780269391019885,
+            "p_value": 1.4667672422419287e-05,
+            "pass": false
+          }
+        },
+        "Cornish-Fisher": {
+          "n_obs": 4797,
+          "n_violations": 260,
+          "violation_rate": 0.05420054200542006,
+          "expected_rate": 0.050000000000000044,
+          "kupiec": {
+            "statistic": 1.7365369087905265,
+            "p_value": 0.18757822217880837,
+            "pass": true,
+            "violation_rate": 0.05420054200542006,
+            "expected_rate": 0.050000000000000044,
+            "n_violations": 260
+          },
+          "christoffersen": {
+            "statistic": 15.674644895741778,
+            "p_value": 7.522588849151468e-05,
+            "pass": false
+          }
+        },
+        "Filtered HS": {
+          "n_obs": 4797,
+          "n_violations": 265,
+          "violation_rate": 0.0552428601209089,
+          "expected_rate": 0.050000000000000044,
+          "kupiec": {
+            "statistic": 2.688585822806658,
+            "p_value": 0.10106947893189933,
+            "pass": true,
+            "violation_rate": 0.0552428601209089,
+            "expected_rate": 0.050000000000000044,
+            "n_violations": 265
+          },
+          "christoffersen": {
+            "statistic": 21.73177704281187,
+            "p_value": 3.13554138231531e-06,
+            "pass": false
+          }
+        },
+        "EVT-GPD": {
+          "n_obs": 4797,
+          "n_violations": 263,
+          "violation_rate": 0.054825932874713365,
+          "expected_rate": 0.050000000000000044,
+          "kupiec": {
+            "statistic": 2.283600030266882,
+            "p_value": 0.13074807142766165,
+            "pass": true,
+            "violation_rate": 0.054825932874713365,
+            "expected_rate": 0.050000000000000044,
+            "n_violations": 263
+          },
+          "christoffersen": {
+            "statistic": 22.418074651578138,
+            "p_value": 2.1930048675899982e-06,
+            "pass": false
+          }
+        }
+      },
+      "99.0%": {
+        "Gaussian": {
+          "n_obs": 4797,
+          "n_violations": 115,
+          "violation_rate": 0.023973316656243485,
+          "expected_rate": 0.010000000000000009,
+          "kupiec": {
+            "statistic": 67.9925271704112,
+            "p_value": 1.1102230246251565e-16,
+            "pass": false,
+            "violation_rate": 0.023973316656243485,
+            "expected_rate": 0.010000000000000009,
+            "n_violations": 115
+          },
+          "christoffersen": {
+            "statistic": 21.78307888498913,
+            "p_value": 3.0528068392099428e-06,
+            "pass": false
+          }
+        },
+        "Historical Sim": {
+          "n_obs": 4797,
+          "n_violations": 71,
+          "violation_rate": 0.014800917239941631,
+          "expected_rate": 0.010000000000000009,
+          "kupiec": {
+            "statistic": 9.730639649926445,
+            "p_value": 0.0018122141008837245,
+            "pass": false,
+            "violation_rate": 0.014800917239941631,
+            "expected_rate": 0.010000000000000009,
+            "n_violations": 71
+          },
+          "christoffersen": {
+            "statistic": 15.696842515725045,
+            "p_value": 7.434817960971785e-05,
+            "pass": false
+          }
+        },
+        "Cornish-Fisher": {
+          "n_obs": 4797,
+          "n_violations": 62,
+          "violation_rate": 0.012924744632061705,
+          "expected_rate": 0.010000000000000009,
+          "kupiec": {
+            "statistic": 3.7947521530633708,
+            "p_value": 0.051413484285413924,
+            "pass": true,
+            "violation_rate": 0.012924744632061705,
+            "expected_rate": 0.010000000000000009,
+            "n_violations": 62
+          },
+          "christoffersen": {
+            "statistic": 10.50356084335932,
+            "p_value": 0.0011914471862670695,
+            "pass": false
+          }
+        },
+        "Filtered HS": {
+          "n_obs": 4797,
+          "n_violations": 76,
+          "violation_rate": 0.015843235355430477,
+          "expected_rate": 0.010000000000000009,
+          "kupiec": {
+            "statistic": 14.049710509710366,
+            "p_value": 0.00017804123670184246,
+            "pass": false,
+            "violation_rate": 0.015843235355430477,
+            "expected_rate": 0.010000000000000009,
+            "n_violations": 76
+          },
+          "christoffersen": {
+            "statistic": 31.778341597770726,
+            "p_value": 1.7280906483563285e-08,
+            "pass": false
+          }
+        },
+        "EVT-GPD": {
+          "n_obs": 4797,
+          "n_violations": 64,
+          "violation_rate": 0.013341671878257244,
+          "expected_rate": 0.010000000000000009,
+          "kupiec": {
+            "statistic": 4.897499347499988,
+            "p_value": 0.026895615330334355,
+            "pass": false,
+            "violation_rate": 0.013341671878257244,
+            "expected_rate": 0.010000000000000009,
+            "n_violations": 64
+          },
+          "christoffersen": {
+            "statistic": 9.940607669167079,
+            "p_value": 0.0016167216981336496,
+            "pass": false
+          }
+        }
+      },
+      "99.5%": {
+        "Gaussian": {
+          "n_obs": 4797,
+          "n_violations": 82,
+          "violation_rate": 0.017094017094017096,
+          "expected_rate": 0.0050000000000000044,
+          "kupiec": {
+            "statistic": 86.28169513750689,
+            "p_value": 0.0,
+            "pass": false,
+            "violation_rate": 0.017094017094017096,
+            "expected_rate": 0.0050000000000000044,
+            "n_violations": 82
+          },
+          "christoffersen": {
+            "statistic": 8.789759341323979,
+            "p_value": 0.003029262088867002,
+            "pass": false
+          }
+        },
+        "Historical Sim": {
+          "n_obs": 4797,
+          "n_violations": 43,
+          "violation_rate": 0.008963935793204087,
+          "expected_rate": 0.0050000000000000044,
+          "kupiec": {
+            "statistic": 12.250201144918975,
+            "p_value": 0.000465208007744522,
+            "pass": false,
+            "violation_rate": 0.008963935793204087,
+            "expected_rate": 0.0050000000000000044,
+            "n_violations": 43
+          },
+          "christoffersen": {
+            "statistic": 17.438840776709323,
+            "p_value": 2.9670092320022157e-05,
+            "pass": false
+          }
+        },
+        "Cornish-Fisher": {
+          "n_obs": 4797,
+          "n_violations": 38,
+          "violation_rate": 0.007921617677715239,
+          "expected_rate": 0.0050000000000000044,
+          "kupiec": {
+            "statistic": 6.983164453278292,
+            "p_value": 0.00822799957060738,
+            "pass": false,
+            "violation_rate": 0.007921617677715239,
+            "expected_rate": 0.0050000000000000044,
+            "n_violations": 38
+          },
+          "christoffersen": {
+            "statistic": 4.332309073141987,
+            "p_value": 0.03739548276136906,
+            "pass": false
+          }
+        },
+        "Filtered HS": {
+          "n_obs": 4797,
+          "n_violations": 48,
+          "violation_rate": 0.010006253908692933,
+          "expected_rate": 0.0050000000000000044,
+          "kupiec": {
+            "statistic": 18.69318058455069,
+            "p_value": 1.535305915634222e-05,
+            "pass": false,
+            "violation_rate": 0.010006253908692933,
+            "expected_rate": 0.0050000000000000044,
+            "n_violations": 48
+          },
+          "christoffersen": {
+            "statistic": 15.279232610072206,
+            "p_value": 9.273041781865388e-05,
+            "pass": false
+          }
+        },
+        "EVT-GPD": {
+          "n_obs": 4797,
+          "n_violations": 41,
+          "violation_rate": 0.008547008547008548,
+          "expected_rate": 0.0050000000000000044,
+          "kupiec": {
+            "statistic": 9.994489236560739,
+            "p_value": 0.0015700937151945649,
+            "pass": false,
+            "violation_rate": 0.008547008547008548,
+            "expected_rate": 0.0050000000000000044,
+            "n_violations": 41
+          },
+          "christoffersen": {
+            "statistic": 18.390565409504827,
+            "p_value": 1.799467639851393e-05,
+            "pass": false
+          }
+        }
+      }
+    }
+  }
+}

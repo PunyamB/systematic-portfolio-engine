@@ -1,0 +1,32 @@
+ticker,direction,current_weight,target_weight,delta_weight,trade_value_usd,sector,regime,run_date
+CNC,SELL,0.0182,0.0156,-0.0026,-2507.5,Healthcare,recovery,2026-04-10
+MET,SELL,0.0518,0.05,-0.0018,-1751.34,Financials,recovery,2026-04-10
+BBY,BUY,0.0115,0.0253,0.0138,13245.63,Consumer Discretionary,recovery,2026-04-10
+GDDY,BUY,0.0,0.044,0.044,42122.73,Technology,recovery,2026-04-10
+APA,BUY,0.0,0.0125,0.0125,11984.52,Energy,recovery,2026-04-10
+ACGL,BUY,0.0269,0.05,0.0231,22095.89,Financials,recovery,2026-04-10
+CF,BUY,0.0,0.033,0.033,31568.73,Materials,recovery,2026-04-10
+DECK,SELL,0.0163,0.0027,-0.0135,-12972.74,Consumer Discretionary,recovery,2026-04-10
+ULTA,BUY,0.0048,0.0161,0.0113,10824.69,Consumer Discretionary,recovery,2026-04-10
+T,BUY,0.0,0.05,0.05,47894.91,Communication Services,recovery,2026-04-10
+EQT,SELL,0.0329,0.0252,-0.0077,-7357.03,Energy,recovery,2026-04-10
+HAL,BUY,0.0,0.0145,0.0145,13918.22,Energy,recovery,2026-04-10
+IBKR,BUY,0.0046,0.0244,0.0198,18940.08,Financials,recovery,2026-04-10
+CTVA,BUY,0.0062,0.044,0.0378,36208.19,Materials,recovery,2026-04-10
+ARE,SELL,0.0335,0.0165,-0.017,-16273.55,Real Estate,recovery,2026-04-10
+APTV,SELL,0.0328,0.018,-0.0148,-14135.77,Consumer Discretionary,recovery,2026-04-10
+VZ,BUY,0.0,0.0209,0.0209,20011.4,Communication Services,recovery,2026-04-10
+LULU,SELL,0.0215,0.0044,-0.0171,-16374.11,Consumer Discretionary,recovery,2026-04-10
+DELL,BUY,0.0068,0.0103,0.0036,3414.74,Technology,recovery,2026-04-10
+NEM,BUY,0.0169,0.0198,0.003,2826.58,Materials,recovery,2026-04-10
+MU,BUY,0.0205,0.0257,0.0053,5059.88,Technology,recovery,2026-04-10
+MTCH,SELL,0.0072,0.002,-0.0052,-4990.9,Communication Services,recovery,2026-04-10
+NOC,SELL,0.0398,0.0365,-0.0033,-3162.1,Industrials,recovery,2026-04-10
+NI,SELL,0.0247,0.0103,-0.0144,-13839.68,Utilities,recovery,2026-04-10
+CRH,SELL,0.0272,0.0056,-0.0216,-20701.24,Materials,recovery,2026-04-10
+MCK,SELL,0.0072,0.0037,-0.0035,-3351.21,Healthcare,recovery,2026-04-10
+TEL,SELL,0.0108,0.0,-0.0108,-10313.1,,recovery,2026-04-10
+BR,SELL,0.032,0.0,-0.032,-30677.36,,recovery,2026-04-10
+CL,SELL,0.0056,0.0,-0.0056,-5350.59,,recovery,2026-04-10
+UPS,SELL,0.0198,0.0,-0.0198,-18932.01,,recovery,2026-04-10
+HCA,SELL,0.0073,0.0,-0.0073,-6976.13,,recovery,2026-04-10

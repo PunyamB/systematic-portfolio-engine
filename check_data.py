@@ -1,0 +1,10 @@
+﻿import pandas as pd
+df = pd.read_parquet('data/backtest/prices.parquet')
+print('Shape:', df.shape)
+print('Columns:', list(df.columns))
+print('Date range:', df['date'].min(), 'to', df['date'].max())
+print('Tickers:', df['ticker'].nunique())
+spy = pd.read_parquet('data/backtest/spy_benchmark.parquet')
+print('SPY Shape:', spy.shape)
+print('SPY Columns:', list(spy.columns))
+print('SPY Date range:', spy.iloc[:,0].min(), 'to', spy.iloc[:,0].max())

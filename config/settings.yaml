@@ -17,8 +17,15 @@ portfolio:
   cash_buffer: 0.02
 
 # --- REBALANCE ---
+# Regime-conditional rebalance scheduling.
+# Each regime has its own trading-day interval. Regime change forces
+# an immediate rebalance and resets the clock.
 rebalance:
-  frequency: monthly        # daily | weekly | monthly | quarterly
+  regime_trading_days:
+    bull:     21
+    recovery: 21
+    bear:     7
+    crisis:   4
   execution_time: "09:35"
   fill_check_time: "09:45"
 
@@ -113,8 +120,6 @@ optimizer:
   objective: max_sharpe
   risk_aversion: 1.5             # calibrated via walk-forward median across 9 windows
   turnover_lambda: 0.005
-  tracking_error_target: 0.04
-  tracking_error_cap: 0.06
   covariance_method: ledoit_wolf
   cov_lookback: 252
 
@@ -144,6 +149,22 @@ circuit_breaker:
   t3_pct: 0.15    # gross exposure 70%, max weight 2.5%, daily rebalance
   t4_pct: 0.20    # reduce to 40% invested, pause 5 days
   recovery_ratio: 0.40
+  # CB tier rebalance intervals (trading days). Effective interval is
+  # min(regime_interval, cb_interval). T1=21 means no effective override
+  # at info tier; T3/T4=1 forces daily rebalance.
+  cb_trading_days:
+    1: 21
+    2: 5
+    3: 1
+    4: 1
+  # CB tier max position weight overrides. Effective cap is
+  # min(portfolio.max_position_weight, cb_max_weight). T1 = base cap (no override).
+  # Existing overweight positions are trimmed down on next rebalance.
+  cb_max_weights:
+    1: 0.05
+    2: 0.035
+    3: 0.025
+    4: 0.025
 
 # --- SECTOR NEUTRALIZATION ---
 sectors:

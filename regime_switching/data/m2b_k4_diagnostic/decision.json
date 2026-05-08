@@ -1,0 +1,31 @@
+{
+  "criteria": {
+    "C1_min_occupancy": {
+      "threshold": 0.05,
+      "observed": 0.03372317599395369,
+      "pass": false
+    },
+    "C2_min_mu_separation": {
+      "threshold": 0.0003,
+      "observed": 0.0006883427099386474,
+      "pass": true
+    },
+    "C3_sigma_separation": {
+      "threshold": 1.15,
+      "observed": [
+        0.037990269088138094,
+        0.014950703613815218,
+        0.009311929384170171,
+        0.004893707589540392
+      ],
+      "pass": true
+    },
+    "C4_bic_prefers_k4": {
+      "k3_bic": -47101.066285625064,
+      "k4_bic": -47194.28649871704,
+      "pass": true
+    }
+  },
+  "all_pass": false,
+  "recommendation": "ABANDON 4-state idea; 3-state is the right specification"
+}

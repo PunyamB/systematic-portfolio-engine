@@ -20,14 +20,19 @@ from data.storage import (
     load_signals, load_portfolio, load_constituents,
     load_decision_log, load_portfolio_history,
     load_pipeline_history, load_execution_log,
+    load_prices,
 )
 from fund_accounting.nav import load_nav_history, load_cash
 from utils.config_loader import get_config
 
 cfg = get_config()
 
-HEALTH_FILE  = Path("logs/pipeline_health.json")
-PROPOSED_DIR = Path("data/proposed")
+HEALTH_FILE         = Path("logs/pipeline_health.json")
+PROPOSED_DIR        = Path("data/proposed")
+TARGET_WEIGHTS_FILE = Path("data/processed/target_weights.parquet")
+
+STOP_FLOOR     = cfg["stop_loss"]["floor"]                         # 0.05
+DRIFT_POSITION = cfg["drift_rebalance"]["max_position_drift"]      # 0.03
 
 st.set_page_config(
     page_title="QuantForge | Operations",
@@ -36,48 +41,137 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── SIDEBAR NAV ───────────────────────────────────────────────
+# ── REGIME COLORS ─────────────────────────────────────────────────────────────
+REGIME_COLORS = {
+    "bull":     "rgba(0,196,180,0.13)",
+    "recovery": "rgba(74,144,217,0.10)",
+    "bear":     "rgba(212,160,23,0.13)",
+    "crisis":   "rgba(224,82,82,0.14)",
+}
+REGIME_HEX = {
+    "bull":     "#00C4B4",
+    "recovery": "#4A90D9",
+    "bear":     "#D4A017",
+    "crisis":   "#E05252",
+}
+
+# ── SIDEBAR NAV ───────────────────────────────────────────────────────────────
 st.sidebar.markdown("## ▲ QuantForge")
 st.sidebar.markdown("**Operational Dashboard**")
 st.sidebar.markdown("---")
 
 page = st.sidebar.radio("Navigate", [
-    "Overview",
-    "Portfolio",
-    "History",
-    "Signals",
-    "Risk",
-    "Execution Log",
-    "Pipeline Health",
+    "Overview", "Portfolio", "History",
+    "Signals", "Risk", "Execution Log", "Pipeline Health",
 ])
 
 
-# ── HELPER ────────────────────────────────────────────────────
+# ── HELPERS ───────────────────────────────────────────────────────────────────
 
-def empty_state(message: str):
-    st.info(f"📭 {message}")
-
+def empty_state(msg):
+    st.info(f"📭 {msg}")
 
 def fmt_pct(val, decimals=2):
-    if val is None or pd.isna(val):
-        return "—"
+    if val is None or pd.isna(val): return "—"
     return f"{val:.{decimals}%}"
 
-
 def fmt_usd(val):
-    if val is None or pd.isna(val):
-        return "—"
+    if val is None or pd.isna(val): return "—"
     return f"${val:,.2f}"
 
+def add_regime_shading_from_log(fig, decision_log):
+    if decision_log.empty or "regime" not in decision_log.columns: return
+    dl = decision_log[["date", "regime"]].dropna().sort_values("date")
+    if dl.empty: return
+    dates      = dl["date"].tolist()
+    composites = dl["regime"].tolist()
+    nav_end    = dates[-1]
+    for i, (dt, state) in enumerate(zip(dates, composites)):
+        x0 = dt
+        x1 = dates[i + 1] if i + 1 < len(dates) else nav_end
+        color = REGIME_COLORS.get(str(state).lower(), "rgba(255,255,255,0.02)")
+        fig.add_vrect(x0=x0, x1=x1, fillcolor=color, line_width=0, layer="below")
 
-# ══════════════════════════════════════════════════════════════
+def regime_legend_html():
+    return """
+    <div style='display:flex;align-items:center;gap:18px;font-size:11px;color:#888;margin-bottom:4px'>
+      <span><span style='display:inline-block;width:9px;height:9px;background:rgba(0,196,180,0.5);border-radius:2px;margin-right:4px'></span>BULL</span>
+      <span><span style='display:inline-block;width:9px;height:9px;background:rgba(74,144,217,0.45);border-radius:2px;margin-right:4px'></span>RECOVERY</span>
+      <span><span style='display:inline-block;width:9px;height:9px;background:rgba(212,160,23,0.5);border-radius:2px;margin-right:4px'></span>BEAR</span>
+      <span><span style='display:inline-block;width:9px;height:9px;background:rgba(224,82,82,0.5);border-radius:2px;margin-right:4px'></span>CRISIS</span>
+    </div>"""
+
+
+# ── POSITION STATUS HELPERS ───────────────────────────────────────────────────
+
+def compute_stop_status(current_price, stop_price, ref_price):
+    """
+    Severity: 4=triggered, 3=risk (<30% band left), 2=watch (30-60%), 1=clear (>60%)
+    Band = (ref_price - stop_price) / ref_price
+    Remaining = (current_price - stop_price) / current_price
+    """
+    try:
+        if any(pd.isna(v) for v in [current_price, stop_price, ref_price]):
+            return "— N/A", 0
+        if current_price <= stop_price:
+            return "🔴 TRIGGERED", 4
+        band      = (ref_price - stop_price) / ref_price if ref_price > 0 else STOP_FLOOR
+        remaining = (current_price - stop_price) / current_price
+        ratio     = remaining / band if band > 0 else 1.0
+        pct_away  = remaining * 100
+        if ratio < 0.30:   return f"🔴 RISK — {pct_away:.1f}% away", 3
+        elif ratio < 0.60: return f"🟡 WATCH — {pct_away:.1f}% away", 2
+        else:               return f"🟢 CLEAR — {pct_away:.1f}% away", 1
+    except Exception:
+        return "— N/A", 0
+
+
+def compute_pnl_status(unrealized_pnl, cost_basis, shares):
+    """
+    Severity: 3=down>5%, 2=down 0-5%, 1=positive
+    """
+    try:
+        if any(pd.isna(v) for v in [unrealized_pnl, cost_basis, shares]) or cost_basis == 0:
+            return "— N/A", 0
+        total_cost = cost_basis * shares
+        pnl_pct    = unrealized_pnl / total_cost if total_cost > 0 else 0
+        sign       = "+" if pnl_pct >= 0 else ""
+        if pnl_pct >= 0:       return f"🟢 {sign}{pnl_pct:.1%}", 1
+        elif pnl_pct >= -0.05: return f"🟡 {pnl_pct:.1%}", 2
+        else:                   return f"🔴 {pnl_pct:.1%}", 3
+    except Exception:
+        return "— N/A", 0
+
+
+def compute_drift_status(current_weight, target_weight):
+    """
+    Severity: 3=drift>threshold, 2=drifting (>half threshold), 1=on target
+    """
+    try:
+        if any(pd.isna(v) for v in [current_weight, target_weight]):
+            return "— N/A", 0
+        drift     = current_weight - target_weight
+        abs_drift = abs(drift)
+        direction = "▲" if drift > 0 else "▼"
+        if abs_drift > DRIFT_POSITION:
+            label = "OVERWEIGHT" if drift > 0 else "UNDERWEIGHT"
+            return f"🔴 {label} {direction}{abs_drift:.1%}", 3
+        elif abs_drift > DRIFT_POSITION * 0.5:
+            return f"🟡 DRIFTING {direction}{abs_drift:.1%}", 2
+        else:
+            return f"🟢 ON TARGET ({abs_drift:.1%})", 1
+    except Exception:
+        return "— N/A", 0
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PAGE: OVERVIEW
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 
 if page == "Overview":
     st.title("Portfolio Overview")
 
-    nav_history = load_nav_history()
+    nav_history  = load_nav_history()
     decision_log = load_decision_log()
 
     if nav_history.empty:
@@ -86,52 +180,63 @@ if page == "Overview":
         nav_history["date"] = pd.to_datetime(nav_history["date"])
         latest = nav_history.iloc[-1]
 
-        # KPI row
         col1, col2, col3, col4, col5, col6 = st.columns(6)
-        col1.metric("NAV", fmt_usd(latest["nav"]))
+        col1.metric("NAV",          fmt_usd(latest["nav"]))
         col2.metric("Daily Return", fmt_pct(latest.get("daily_return", 0)))
-        col3.metric("Cash", fmt_usd(latest.get("cash", 0)))
-        col4.metric("Equity", fmt_usd(latest.get("equity_value", 0)))
+        col3.metric("Cash",         fmt_usd(latest.get("cash", 0)))
+        col4.metric("Equity",       fmt_usd(latest.get("equity_value", 0)))
 
-        # Regime and CB from latest decision log
         if not decision_log.empty:
             last_decision = decision_log.iloc[-1]
-            col5.metric("Regime", str(last_decision.get("regime", "—")).upper())
             cb = last_decision.get("cb_tier", 0)
+            col5.metric("Regime", str(last_decision.get("regime", "—")).upper())
             col6.metric("CB Tier", f"T{int(cb)}" if cb and cb > 0 else "None")
         else:
             col5.metric("Regime", "—")
             col6.metric("CB Tier", "—")
 
-        # NAV chart
         st.subheader("NAV Over Time")
+        show_regime = False
+        if not decision_log.empty and "regime" in decision_log.columns:
+            col_tog, col_leg = st.columns([1, 5])
+            with col_tog:
+                show_regime = st.toggle("Regime overlay", value=True, key="ov_regime")
+            if show_regime:
+                with col_leg:
+                    st.markdown(regime_legend_html(), unsafe_allow_html=True)
+
         fig = go.Figure()
+        if show_regime and not decision_log.empty:
+            dl = decision_log.copy()
+            dl["date"] = pd.to_datetime(dl["date"])
+            add_regime_shading_from_log(fig, dl)
         fig.add_trace(go.Scatter(
             x=nav_history["date"], y=nav_history["nav"],
-            mode="lines", name="NAV",
-            line=dict(color="#2196F3", width=2)
+            mode="lines", name="NAV", line=dict(color="#2196F3", width=2)
         ))
-        fig.update_layout(
-            height=350, margin=dict(l=0, r=0, t=30, b=0),
-            xaxis_title="", yaxis_title="NAV ($)",
-            template="plotly_dark"
-        )
+        fig.update_layout(height=350, margin=dict(l=0,r=0,t=30,b=0),
+                          xaxis_title="", yaxis_title="NAV ($)", template="plotly_dark")
         st.plotly_chart(fig, use_container_width=True)
 
-        # Next rebalance
-        from utils.rebalance_calendar import get_next_rebalance_date
-        next_reb = get_next_rebalance_date(date.today())
-        st.caption(f"Rebalance frequency: {cfg['rebalance']['frequency']} | Next rebalance: {next_reb}")
+        from utils.rebalance_calendar import get_next_rebalance_date, _effective_interval
+        latest_regime  = str(decision_log.iloc[-1].get("regime", "recovery")).lower() \
+                         if not decision_log.empty else "recovery"
+        latest_cb_tier = int(decision_log.iloc[-1].get("cb_tier", 0)) \
+                         if not decision_log.empty else 0
+        next_reb       = get_next_rebalance_date(date.today(), latest_regime, latest_cb_tier)
+        interval_days  = _effective_interval(latest_regime, latest_cb_tier)
+        st.caption(f"Regime: {latest_regime.upper()} | CB Tier: T{latest_cb_tier} | "
+                   f"Effective interval: {interval_days} trading days | Next rebalance: {next_reb}")
 
 
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 # PAGE: PORTFOLIO
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 
 elif page == "Portfolio":
     st.title("Current Portfolio")
 
-    portfolio = load_portfolio()
+    portfolio   = load_portfolio()
     nav_history = load_nav_history()
 
     if portfolio.empty:
@@ -140,53 +245,109 @@ elif page == "Portfolio":
         nav = float(nav_history.iloc[-1]["nav"]) if not nav_history.empty else cfg["portfolio"]["initial_capital"]
         portfolio["weight"] = portfolio["market_value"] / nav if nav > 0 else 0
 
-        # Summary
         col1, col2, col3 = st.columns(3)
-        col1.metric("Positions", len(portfolio))
+        col1.metric("Positions",  len(portfolio))
         col2.metric("Max Weight", fmt_pct(portfolio["weight"].max()))
         col3.metric("Invested %", fmt_pct(portfolio["market_value"].sum() / nav if nav > 0 else 0))
 
-        # Positions table
+        # ── Latest close prices ──
+        prices = load_prices()
+        if not prices.empty:
+            latest_px = (
+                prices.sort_values("date").groupby("ticker").last()
+                .reset_index()[["ticker", "close"]]
+                .rename(columns={"close": "last_close"})
+            )
+            portfolio = portfolio.merge(latest_px, on="ticker", how="left")
+        else:
+            portfolio["last_close"] = np.nan
+
+        # ── Target weights for drift ──
+        if TARGET_WEIGHTS_FILE.exists():
+            tw = pd.read_parquet(TARGET_WEIGHTS_FILE)
+            if "ticker" in tw.columns and "target_weight" in tw.columns:
+                portfolio = portfolio.merge(tw[["ticker", "target_weight"]], on="ticker", how="left")
+                portfolio["target_weight"] = portfolio["target_weight"].fillna(0.0)
+            else:
+                portfolio["target_weight"] = np.nan
+        else:
+            portfolio["target_weight"] = np.nan
+
+        # ── Compute status columns ──
+        stop_labels, stop_sevs  = [], []
+        pnl_labels,  pnl_sevs   = [], []
+        drift_labels, drift_sevs = [], []
+
+        for _, row in portfolio.iterrows():
+            sl, ss = compute_stop_status(
+                row.get("last_close"), row.get("stop_price"), row.get("stop_reference_price"))
+            pl, ps = compute_pnl_status(
+                row.get("unrealized_pnl"), row.get("cost_basis"), row.get("shares"))
+            dl, ds = compute_drift_status(
+                row.get("weight"), row.get("target_weight"))
+            stop_labels.append(sl);  stop_sevs.append(ss)
+            pnl_labels.append(pl);   pnl_sevs.append(ps)
+            drift_labels.append(dl); drift_sevs.append(ds)
+
+        portfolio["Stop"]  = stop_labels
+        portfolio["P&L"]   = pnl_labels
+        portfolio["Drift"] = drift_labels
+        portfolio["_sev"]  = [max(s, p, d) for s, p, d in zip(stop_sevs, pnl_sevs, drift_sevs)]
+
+        # Sort worst-first
+        portfolio = portfolio.sort_values("_sev", ascending=False).reset_index(drop=True)
+
+        # ── Positions table ──
         st.subheader("Positions")
-        display_cols = ["ticker", "shares", "market_value", "weight", "cost_basis",
-                        "unrealized_pnl", "entry_date", "stop_price"]
-        display_cols = [c for c in display_cols if c in portfolio.columns]
+        cols = ["ticker", "weight", "last_close", "stop_reference_price",
+                "stop_price", "Stop", "unrealized_pnl", "P&L", "Drift", "entry_date"]
+        cols = [c for c in cols if c in portfolio.columns]
+
         st.dataframe(
-            portfolio[display_cols].sort_values("weight", ascending=False),
-            use_container_width=True, hide_index=True,
+            portfolio[cols],
+            use_container_width=True,
+            hide_index=True,
             column_config={
-                "weight": st.column_config.NumberColumn(format="%.2%%"),
-                "market_value": st.column_config.NumberColumn(format="$%.2f"),
-                "cost_basis": st.column_config.NumberColumn(format="$%.2f"),
-                "unrealized_pnl": st.column_config.NumberColumn(format="$%.2f"),
-                "stop_price": st.column_config.NumberColumn(format="$%.2f"),
+                "ticker":               st.column_config.TextColumn("Ticker"),
+                "weight":               st.column_config.NumberColumn("Weight", format="%.2f%%"),
+                "last_close":           st.column_config.NumberColumn("Last Close", format="$%.2f"),
+                "stop_reference_price": st.column_config.NumberColumn("Ref Price", format="$%.2f"),
+                "stop_price":           st.column_config.NumberColumn("Stop Price", format="$%.2f"),
+                "Stop":                 st.column_config.TextColumn("Stop Status"),
+                "unrealized_pnl":       st.column_config.NumberColumn("Unrealized P&L", format="$%.2f"),
+                "P&L":                  st.column_config.TextColumn("P&L Status"),
+                "Drift":                st.column_config.TextColumn("Drift Status"),
+                "entry_date":           st.column_config.TextColumn("Entry Date"),
             }
         )
 
-        # Sector breakdown
+        st.markdown(
+            f"<div style='font-size:11px;color:#555;margin-top:4px;display:flex;gap:28px;flex-wrap:wrap'>"
+            f"<span><b>Stop:</b> TRIGGERED = below stop | RISK = &lt;30% band | WATCH = 30–60% | CLEAR = &gt;60%</span>"
+            f"<span><b>P&L:</b> 🟢 positive | 🟡 0–5% down | 🔴 &gt;5% down</span>"
+            f"<span><b>Drift:</b> threshold ±{DRIFT_POSITION:.0%} from target weight</span>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+
+        # ── Sector allocation ──
         constituents = load_constituents()
         if not constituents.empty:
-            merged = portfolio.merge(
-                constituents[["ticker", "sector"]], on="ticker", how="left"
-            )
+            merged     = portfolio.merge(constituents[["ticker", "sector"]], on="ticker", how="left")
             sector_wts = merged.groupby("sector")["weight"].sum().sort_values(ascending=True)
-
             st.subheader("Sector Allocation")
             fig = go.Figure(go.Bar(
                 x=sector_wts.values, y=sector_wts.index,
-                orientation="h",
-                marker_color="#2196F3"
+                orientation="h", marker_color="#2196F3"
             ))
-            fig.update_layout(
-                height=300, margin=dict(l=0, r=0, t=10, b=0),
-                xaxis_title="Weight", template="plotly_dark"
-            )
+            fig.update_layout(height=300, margin=dict(l=0,r=0,t=10,b=0),
+                              xaxis_title="Weight", template="plotly_dark")
             st.plotly_chart(fig, use_container_width=True)
 
 
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 # PAGE: HISTORY
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 
 elif page == "History":
     st.title("Decision History")
@@ -197,65 +358,66 @@ elif page == "History":
         empty_state("No decision history yet — run the pipeline to start tracking.")
     else:
         decision_log["date"] = pd.to_datetime(decision_log["date"])
-
-        # Date picker
         available_dates = sorted(decision_log["date"].dt.date.unique(), reverse=True)
-        selected_date = st.selectbox("Select date", available_dates)
-
+        selected_date   = st.selectbox("Select date", available_dates)
         day_row = decision_log[decision_log["date"].dt.date == selected_date].iloc[-1]
 
-        # Day summary
         col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("NAV", fmt_usd(day_row.get("nav")))
-        col2.metric("Return", fmt_pct(day_row.get("daily_return")))
-        col3.metric("Regime", str(day_row.get("regime", "")).upper())
+        col1.metric("NAV",     fmt_usd(day_row.get("nav")))
+        col2.metric("Return",  fmt_pct(day_row.get("daily_return")))
+        col3.metric("Regime",  str(day_row.get("regime", "")).upper())
         col4.metric("CB Tier", f"T{int(day_row.get('cb_tier', 0))}" if day_row.get("cb_tier", 0) else "None")
-        col5.metric("Status", str(day_row.get("status", "")).upper())
+        col5.metric("Status",  str(day_row.get("status", "")).upper())
 
-        # Full decision record
         st.subheader("Full Decision Record")
         st.json({k: (str(v) if pd.notna(v) else None) for k, v in day_row.to_dict().items()})
 
-        # Portfolio on that date
         st.subheader("Portfolio Snapshot")
         portfolio_history = load_portfolio_history()
         if not portfolio_history.empty:
             portfolio_history["date"] = pd.to_datetime(portfolio_history["date"])
             day_portfolio = portfolio_history[portfolio_history["date"].dt.date == selected_date]
-            if not day_portfolio.empty and not (len(day_portfolio) == 1 and day_portfolio.iloc[0].get("ticker") == "CASH_ONLY"):
-                display = day_portfolio[day_portfolio["ticker"] != "CASH_ONLY"]
-                st.dataframe(display, use_container_width=True, hide_index=True)
+            if not day_portfolio.empty and not (
+                len(day_portfolio) == 1 and day_portfolio.iloc[0].get("ticker") == "CASH_ONLY"
+            ):
+                st.dataframe(day_portfolio[day_portfolio["ticker"] != "CASH_ONLY"],
+                             use_container_width=True, hide_index=True)
             else:
                 st.caption("No positions held on this date.")
         else:
             st.caption("No portfolio history available.")
 
-        # Drawdown chart
         st.subheader("Drawdown Over Time")
         nav_history = load_nav_history()
         if not nav_history.empty:
             nav_history["date"] = pd.to_datetime(nav_history["date"])
-            nav_history = nav_history.sort_values("date")
+            nav_history         = nav_history.sort_values("date")
             nav_history["peak"] = nav_history["nav"].cummax()
             nav_history["drawdown"] = (nav_history["nav"] - nav_history["peak"]) / nav_history["peak"]
 
+            show_regime_dd = False
+            if "regime" in decision_log.columns:
+                col_tog2, _ = st.columns([1, 5])
+                with col_tog2:
+                    show_regime_dd = st.toggle("Regime overlay", value=True, key="hist_regime")
+
             fig = go.Figure()
+            if show_regime_dd:
+                add_regime_shading_from_log(fig, decision_log)
             fig.add_trace(go.Scatter(
                 x=nav_history["date"], y=nav_history["drawdown"],
                 fill="tozeroy", name="Drawdown",
                 line=dict(color="#F44336", width=1),
                 fillcolor="rgba(244,67,54,0.3)"
             ))
-            fig.update_layout(
-                height=250, margin=dict(l=0, r=0, t=10, b=0),
-                yaxis_tickformat=".1%", template="plotly_dark"
-            )
+            fig.update_layout(height=250, margin=dict(l=0,r=0,t=10,b=0),
+                              yaxis_tickformat=".1%", template="plotly_dark")
             st.plotly_chart(fig, use_container_width=True)
 
 
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 # PAGE: SIGNALS
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 
 elif page == "Signals":
     st.title("Signal Scores")
@@ -265,32 +427,25 @@ elif page == "Signals":
     if signals.empty:
         empty_state("No signal data — run the pipeline to compute signals.")
     else:
-        # Top composite scores
         st.subheader("Top 20 by Composite Score")
         top = signals.nlargest(20, "composite_score")[["ticker", "composite_score", "composite_rank"]]
         st.dataframe(top, use_container_width=True, hide_index=True)
 
-        # Signal heatmap for top 20
         signal_cols = [c for c in signals.columns if c not in [
-            "ticker", "date", "composite_score", "composite_rank"
-        ]]
+            "ticker", "date", "composite_score", "composite_rank"]]
         if signal_cols:
             st.subheader("Individual Signal Scores (Top 20)")
-            top_tickers = signals.nlargest(20, "composite_score")["ticker"].tolist()
+            top_tickers  = signals.nlargest(20, "composite_score")["ticker"].tolist()
             heatmap_data = signals[signals["ticker"].isin(top_tickers)].set_index("ticker")[signal_cols]
-
-            fig = px.imshow(
-                heatmap_data, aspect="auto",
-                color_continuous_scale="RdYlGn",
-                labels=dict(color="Z-Score")
-            )
+            fig = px.imshow(heatmap_data, aspect="auto",
+                            color_continuous_scale="RdYlGn", labels=dict(color="Z-Score"))
             fig.update_layout(height=500, template="plotly_dark")
             st.plotly_chart(fig, use_container_width=True)
 
 
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 # PAGE: RISK
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 
 elif page == "Risk":
     st.title("Risk Monitor")
@@ -302,65 +457,54 @@ elif page == "Risk":
     else:
         latest = decision_log.iloc[-1]
 
-        col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("Beta", f"{latest.get('beta', 1.0):.3f}")
-        col2.metric("Tracking Error", fmt_pct(latest.get("tracking_error", 0)))
-        col3.metric("Drawdown", fmt_pct(latest.get("drawdown", 0)))
-        col4.metric("CB Tier", f"T{int(latest.get('cb_tier', 0))}" if latest.get("cb_tier") else "None")
-        col5.metric("VIX", f"{latest.get('vix', '—')}")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Beta",     f"{latest.get('beta', 1.0):.3f}")
+        col2.metric("Drawdown", fmt_pct(latest.get("drawdown", 0)))
+        col3.metric("CB Tier",  f"T{int(latest.get('cb_tier', 0))}" if latest.get("cb_tier") else "None")
+        col4.metric("VIX",      f"{latest.get('vix', '—')}")
 
-        # Risk metrics over time
         if len(decision_log) > 1:
             decision_log["date"] = pd.to_datetime(decision_log["date"])
 
-            st.subheader("Tracking Error Over Time")
-            if "tracking_error" in decision_log.columns:
-                te_data = decision_log[["date", "tracking_error"]].dropna()
-                if not te_data.empty:
-                    fig = go.Figure()
-                    fig.add_trace(go.Scatter(
-                        x=te_data["date"], y=te_data["tracking_error"],
-                        mode="lines", name="TE",
-                        line=dict(color="#FF9800", width=2)
-                    ))
-                    fig.add_hline(
-                        y=cfg["optimizer"]["tracking_error_cap"],
-                        line_dash="dash", line_color="red",
-                        annotation_text="TE Cap"
-                    )
-                    fig.update_layout(
-                        height=250, margin=dict(l=0, r=0, t=30, b=0),
-                        yaxis_tickformat=".1%", template="plotly_dark"
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-
-            st.subheader("Beta Over Time")
             if "beta" in decision_log.columns:
                 beta_data = decision_log[["date", "beta"]].dropna()
                 if not beta_data.empty:
+                    st.subheader("Beta Over Time")
                     fig = go.Figure()
-                    fig.add_trace(go.Scatter(
-                        x=beta_data["date"], y=beta_data["beta"],
-                        mode="lines", name="Beta",
-                        line=dict(color="#4CAF50", width=2)
-                    ))
+                    fig.add_trace(go.Scatter(x=beta_data["date"], y=beta_data["beta"],
+                                            mode="lines", name="Beta", line=dict(color="#4CAF50", width=2)))
                     fig.add_hline(y=1.0, line_dash="dash", line_color="gray")
-                    fig.update_layout(
-                        height=250, margin=dict(l=0, r=0, t=30, b=0),
-                        template="plotly_dark"
-                    )
+                    fig.update_layout(height=250, margin=dict(l=0,r=0,t=30,b=0), template="plotly_dark")
                     st.plotly_chart(fig, use_container_width=True)
 
-        # Stop exits
+            if "vix" in decision_log.columns:
+                vix_data = decision_log[["date", "vix"]].dropna(subset=["vix"])
+                if not vix_data.empty:
+                    st.subheader("VIX Over Time")
+                    fig_vix = go.Figure()
+                    fig_vix.add_trace(go.Scatter(x=vix_data["date"], y=vix_data["vix"],
+                                                 mode="lines", name="VIX", line=dict(color="#E05252", width=2)))
+                    fig_vix.add_hline(y=20, line_dash="dot", line_color="#D4A017",
+                                      annotation_text="Elevated threshold")
+                    fig_vix.update_layout(height=220, margin=dict(l=0,r=0,t=30,b=0), template="plotly_dark")
+                    st.plotly_chart(fig_vix, use_container_width=True)
+
+            if "regime" in decision_log.columns:
+                st.subheader("Regime History")
+                reg_cols = ["date", "regime", "vix", "vix_ratio", "breadth", "yield_spread"]
+                reg_cols = [c for c in reg_cols if c in decision_log.columns]
+                st.dataframe(decision_log[reg_cols].sort_values("date", ascending=False),
+                             use_container_width=True, hide_index=True)
+
         stop_exits = latest.get("stop_exits", "")
         if stop_exits:
             st.subheader("Recent Stop Exits")
             st.warning(f"Trailing stops triggered: {stop_exits}")
 
 
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 # PAGE: EXECUTION LOG
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 
 elif page == "Execution Log":
     st.title("Execution Log")
@@ -371,18 +515,14 @@ elif page == "Execution Log":
         empty_state("No execution history — approve and execute trades to start logging.")
     else:
         st.subheader(f"Total Records: {len(exec_log)}")
-
-        # Summary stats
         if "filled" in exec_log.columns:
             filled = exec_log[exec_log["filled"] == True]
             col1, col2, col3 = st.columns(3)
             col1.metric("Total Fills", len(filled))
-            col2.metric("Failed", len(exec_log) - len(filled))
+            col2.metric("Failed",      len(exec_log) - len(filled))
             if "slippage_bps" in filled.columns:
-                avg_slip = filled["slippage_bps"].mean()
-                col3.metric("Avg Slippage", f"{avg_slip:.1f} bps")
+                col3.metric("Avg Slippage", f"{filled['slippage_bps'].mean():.1f} bps")
 
-        # Full log table
         display_cols = [c for c in exec_log.columns if c not in ["order_id"]]
         st.dataframe(
             exec_log[display_cols].sort_values("execution_date", ascending=False)
@@ -391,41 +531,31 @@ elif page == "Execution Log":
         )
 
 
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 # PAGE: PIPELINE HEALTH
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 
 elif page == "Pipeline Health":
     st.title("Pipeline Health")
 
-    # Current run status from JSON
     if HEALTH_FILE.exists():
         with open(HEALTH_FILE) as f:
             health = json.load(f)
 
         st.subheader(f"Last Run: {health.get('run_date', '—')}")
-
         col1, col2 = st.columns(2)
         col1.metric("Total Time", f"{health.get('total_sec', 0):.1f}s")
         failed = [s for s, v in health.get("stages", {}).items() if v["status"] == "failed"]
         col2.metric("Status", "FAILED" if failed else "SUCCESS")
 
-        # Stage breakdown
         st.subheader("Stage Breakdown")
-        stages = health.get("stages", {})
-        stage_data = []
-        for name, info in stages.items():
-            stage_data.append({
-                "Stage": name,
-                "Status": info["status"].upper(),
-                "Duration (s)": info["duration_sec"],
-                "Detail": info.get("detail", ""),
-            })
+        stage_data = [
+            {"Stage": name, "Status": info["status"].upper(),
+             "Duration (s)": info["duration_sec"], "Detail": info.get("detail", "")}
+            for name, info in health.get("stages", {}).items()
+        ]
+        st.dataframe(pd.DataFrame(stage_data), use_container_width=True, hide_index=True)
 
-        stage_df = pd.DataFrame(stage_data)
-        st.dataframe(stage_df, use_container_width=True, hide_index=True)
-
-        # Timing bar chart
         fig = go.Figure(go.Bar(
             x=[s["Duration (s)"] for s in stage_data],
             y=[s["Stage"] for s in stage_data],
@@ -436,15 +566,12 @@ elif page == "Pipeline Health":
                 for s in stage_data
             ]
         ))
-        fig.update_layout(
-            height=350, margin=dict(l=0, r=0, t=10, b=0),
-            xaxis_title="Seconds", template="plotly_dark"
-        )
+        fig.update_layout(height=350, margin=dict(l=0,r=0,t=10,b=0),
+                          xaxis_title="Seconds", template="plotly_dark")
         st.plotly_chart(fig, use_container_width=True)
     else:
         empty_state("No pipeline health data — run the pipeline first.")
 
-    # History
     pipeline_history = load_pipeline_history()
     if not pipeline_history.empty:
         st.subheader("Run History")

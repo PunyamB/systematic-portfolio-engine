@@ -1,0 +1,33 @@
+ticker,trade_type,shares,direction,current_weight,target_weight,delta_weight,trade_value_usd,close,sector,regime,run_date
+CMCSA,buy,1816,BUY,0.0,0.0485,0.0485,49379.8,27.19,Communication Services,recovery,2026-05-01
+EQT,buy,231,BUY,0.0367,0.05,0.0133,13553.11,58.595,Energy,recovery,2026-05-01
+SYF,buy,665,BUY,0.0,0.05,0.05,50936.72,76.49,Financials,recovery,2026-05-01
+DLTR,buy,211,BUY,0.0,0.0198,0.0198,20160.61,95.37,Consumer Staples,recovery,2026-05-01
+PFG,sell,56,SELL,0.0556,0.05,-0.0056,-5739.76,101.208,Financials,recovery,2026-05-01
+NEM,buy,301,BUY,0.0,0.0327,0.0327,33261.95,110.18,Materials,recovery,2026-05-01
+ACGL,buy,15,BUY,0.0486,0.05,0.0014,1462.4,95.695,Financials,recovery,2026-05-01
+LULU,buy,145,BUY,0.0,0.0193,0.0193,19663.3,135.37,Consumer Discretionary,recovery,2026-05-01
+MET,sell,21,SELL,0.0517,0.05,-0.0017,-1762.6,80.58,Financials,recovery,2026-05-01
+BBY,buy,249,BUY,0.0,0.0148,0.0148,15070.46,60.41,Consumer Discretionary,recovery,2026-05-01
+TPR,buy,81,BUY,0.0,0.0115,0.0115,11715.63,144.32,Consumer Discretionary,recovery,2026-05-01
+FCX,buy,460,BUY,0.0,0.0259,0.0259,26435.96,57.39,Materials,recovery,2026-05-01
+GDDY,buy,264,BUY,0.0,0.0218,0.0218,22198.92,84.065,Technology,recovery,2026-05-01
+UNH,buy,12,BUY,0.0,0.0044,0.0044,4467.46,368.775,Healthcare,recovery,2026-05-01
+CTVA,buy,446,BUY,0.0,0.0355,0.0355,36187.06,81.13,Materials,recovery,2026-05-01
+KHC,sell,82,SELL,0.0518,0.05,-0.0018,-1875.82,22.7935,Consumer Staples,recovery,2026-05-01
+CF,buy,34,BUY,0.0095,0.0137,0.0042,4268.64,123.065,Materials,recovery,2026-05-01
+DELL,buy,7,BUY,0.0074,0.009,0.0016,1630.52,208.92,Technology,recovery,2026-05-01
+WTW,buy,61,BUY,0.0,0.0158,0.0158,16078.11,261.53,Financials,recovery,2026-05-01
+ADBE,buy,37,BUY,0.0,0.0091,0.0091,9306.48,246.1173,Technology,recovery,2026-05-01
+BR,buy,329,BUY,0.0,0.05,0.05,50936.72,154.5844,Technology,recovery,2026-05-01
+APTV,sell,68,SELL,0.0326,0.0285,-0.0041,-4184.37,60.67,Consumer Discretionary,recovery,2026-05-01
+T,sell,572,SELL,0.0493,0.0346,-0.0148,-15047.38,26.265,Communication Services,recovery,2026-05-01
+MCK,buy,62,BUY,0.0,0.0499,0.0499,50831.89,812.02,Healthcare,recovery,2026-05-01
+VZ,sell,306,SELL,0.0233,0.0088,-0.0145,-14774.58,48.22,Communication Services,recovery,2026-05-01
+BSX,buy,64,BUY,0.0,0.0036,0.0036,3705.66,57.67,Healthcare,recovery,2026-05-01
+UPS,sell,144,SELL,0.0198,0.0044,-0.0154,-15647.41,108.35,Industrials,recovery,2026-05-01
+CNC,sell,252,SELL,0.0247,0.0114,-0.0133,-13504.63,53.46,Healthcare,recovery,2026-05-01
+CL,sell,63,SELL,0.0055,0.0,-0.0055,-5586.84,88.68,,recovery,2026-05-01
+MTCH,sell,215,SELL,0.008,0.0,-0.008,-8170.2,37.825,,recovery,2026-05-01
+TRV,sell,125,SELL,0.038,0.0,-0.038,-38671.88,309.375,,recovery,2026-05-01
+NOC,sell,47,SELL,0.0265,0.0,-0.0265,-26993.28,574.325,,recovery,2026-05-01

@@ -1,8 +1,11 @@
 # optimizer/portfolio_optimizer.py
 # Mean-variance portfolio optimizer using cvxpy.
 # Objective: maximize Sharpe ratio (maximize returns - risk penalty)
-# Constraints: 5% max weight, 2% cash buffer, tracking error cap 6%,
+# Constraints: max weight (CB-adjusted), 2% cash buffer,
 #              turnover penalty lambda, sector neutralization.
+# Max weight is tightened by circuit breaker: T2=3.5%, T3/T4=2.5%.
+# Sum-of-weights floor scales with max weight to maintain >= 20 positions.
+# At CB tier 3+, no new positions allowed (continuous block until T2 or below).
 # Covariance: Ledoit-Wolf shrinkage on 252-day returns.
 # Sector neutralization: FMP names remapped to GICS, pooling for small sectors.
 
@@ -23,8 +26,6 @@ TO  = cfg["turnover"]
 
 MAX_WEIGHT      = PF["max_position_weight"]        # 0.05
 CASH_BUFFER     = PF["cash_buffer"]                # 0.02
-TE_TARGET       = OPT["tracking_error_target"]     # 0.04
-TE_CAP          = OPT["tracking_error_cap"]        # 0.06
 TURNOVER_LAMBDA = OPT["turnover_lambda"]           # 0.005
 COV_LOOKBACK    = OPT["cov_lookback"]              # 252
 ROUND_TRIP_BPS  = TO["round_trip_cost_bps"]        # 10
@@ -76,6 +77,39 @@ def get_invested_target(cb_tier: int) -> float:
 def get_cash_requirement(cb_tier: int) -> float:
     """Returns required cash fraction for given circuit breaker tier."""
     return 1.0 - get_invested_target(cb_tier)
+
+
+def get_max_weight(cb_tier: int) -> float:
+    """
+    Returns effective max position weight for given CB tier.
+    Effective = min(base MAX_WEIGHT, cb_max_weight) so tier overrides
+    can only tighten, never relax, the base 5% cap.
+    T0 / unmapped tiers fall back to base MAX_WEIGHT.
+    """
+    if cb_tier <= 0:
+        return MAX_WEIGHT
+    cb_caps = cfg.get("circuit_breaker", {}).get("cb_max_weights", {})
+    # YAML keys may be int or str depending on parser
+    val = cb_caps.get(cb_tier, cb_caps.get(str(cb_tier), MAX_WEIGHT))
+    return float(min(MAX_WEIGHT, val))
+
+
+# Diversification floor: minimum number of positions the optimizer must hold.
+# Sum-of-weights floor scales as min(0.85, MIN_POSITIONS * max_weight) so the
+# constraint stays feasible at tighter CB tiers (T3/T4 at 2.5% cap).
+MIN_POSITIONS = 20
+
+# CB tier at or above which new positions are blocked.
+# At T3+ the optimizer can only trim/hold existing positions, not open new ones.
+NO_NEW_POSITIONS_TIER = 3
+
+# Threshold below which a position is considered "not held" / "new if added".
+NEW_POSITION_THRESHOLD = 0.001
+
+
+def is_no_new_positions_active(cb_tier: int) -> bool:
+    """Returns True if the no-new-positions block is active for this CB tier."""
+    return cb_tier >= NO_NEW_POSITIONS_TIER
 
 
 # ------------------------------------------------------------
@@ -265,23 +299,14 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
     w_current = get_current_weights(tickers, nav)
 
     # ----------------------------------------------------------
-    # SPY WEIGHTS (for tracking error)
-    # ----------------------------------------------------------
-    n = len(tickers)
-    total_constituents = len(constituents)
-    w_spy = np.ones(n) / total_constituents  # 1/503 per ticker
-
-    # ----------------------------------------------------------
     # CVXPY OPTIMIZATION
     # ----------------------------------------------------------
+    n = len(tickers)
     w = cp.Variable(n)
 
     # Turnover cost (round-trip bps converted to decimal)
     round_trip_cost = ROUND_TRIP_BPS / 10000.0
     turnover        = cp.norm1(w - w_current)
-
-    # Active weights vs SPY benchmark
-    w_active = w - w_spy
 
     # Objective: maximize alpha - risk penalty - turnover penalty
     risk_aversion = OPT.get("risk_aversion", 1.5)
@@ -291,19 +316,47 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
         - TURNOVER_LAMBDA * turnover
     )
 
+    effective_max_weight = get_max_weight(cb_tier)
+    # Adaptive sum floor: scales with max weight to keep >= MIN_POSITIONS feasible
+    sum_floor = min(0.85, MIN_POSITIONS * effective_max_weight)
+
+    # No-new-positions block (T3+): force w[i]=0 for indices not currently held.
+    # Also recompute floor based on actual held count to keep optimizer feasible.
+    block_new_positions = is_no_new_positions_active(cb_tier)
+    new_position_mask = np.array(
+        [w_current[i] < NEW_POSITION_THRESHOLD for i in range(n)],
+        dtype=bool
+    )
+    if block_new_positions:
+        n_held = int((~new_position_mask).sum())
+        # If blocking would make sum_floor infeasible, scale floor to what is achievable
+        achievable_floor = n_held * effective_max_weight
+        if achievable_floor < sum_floor:
+            print(f"[optimizer] No-new-positions active (T{cb_tier}): {n_held} held positions, "
+                  f"floor reduced from {sum_floor:.3f} to {achievable_floor:.3f}")
+            sum_floor = achievable_floor
+        else:
+            print(f"[optimizer] No-new-positions active (T{cb_tier}): {n_held} held positions, "
+                  f"floor unchanged at {sum_floor:.3f}")
+
     constraints = [
         # Long only
         w >= 0,
-        # Max position size \u2014 5% cap
-        w <= MAX_WEIGHT,
+        # Max position size (CB-adjusted): T0/T1=5%, T2=3.5%, T3/T4=2.5%
+        w <= effective_max_weight,
         # Stay invested \u2014 leave cash buffer
         cp.sum(w) <= 1.0 - CASH_BUFFER,
-        cp.sum(w) >= 0.85,
+        # Diversification floor: forces >= MIN_POSITIONS positions at the cap
+        cp.sum(w) >= sum_floor,
         # Max turnover per rebalance \u2014 skipped on first run (no existing portfolio)
         *([] if w_current.sum() == 0 else [turnover <= MAX_TURNOVER * 2]),
-        # Tracking error cap vs SPY
-        cp.quad_form(w_active, cp.psd_wrap(sigma)) <= TE_CAP ** 2,
     ]
+
+    # No-new-positions block: zero out indices not currently held
+    if block_new_positions and new_position_mask.any():
+        new_indices = np.where(new_position_mask)[0].tolist()
+        for i in new_indices:
+            constraints.append(w[i] == 0)
 
     # Sector neutralization constraints
     sector_groups  = build_sector_constraints(tickers, constituents)
@@ -315,7 +368,7 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
 
         spy_wt        = spy_sector_wts.get(sector, 0.05)
         sector_weight = cp.sum(w[indices])
-        max_capacity  = len(indices) * MAX_WEIGHT
+        max_capacity  = len(indices) * effective_max_weight
         lower_bound   = max(0, spy_wt - 0.05)
 
         if max_capacity >= lower_bound:
@@ -357,7 +410,7 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
         weights = weights / total * get_invested_target(cb_tier)
 
     # Clip any weight pushed above max by renormalization
-    weights = np.minimum(weights, MAX_WEIGHT)
+    weights = np.minimum(weights, effective_max_weight)
 
     # Build result DataFrame
     constituents_map = constituents.copy()
@@ -377,17 +430,16 @@ def run_optimizer(run_date: date = None, regime: str = "recovery", cb_tier: int 
     # Diagnostics
     n_positions  = len(result)
     max_wt       = result["target_weight"].max()
-    active_wts   = weights - w_spy
-    te_realized  = float(np.sqrt(active_wts @ sigma @ active_wts))
     turnover_val = float(np.sum(np.abs(weights - w_current)))
 
     print(f"[optimizer] Positions: {n_positions} | Max weight: {max_wt:.2%} | "
-          f"TE: {te_realized:.2%} | Turnover: {turnover_val:.2%}")
+          f"Turnover: {turnover_val:.2%}")
 
+    block_msg = f" | No-new-positions: ACTIVE (T{cb_tier})" if block_new_positions else ""
     notify(
         f"Optimization complete for {run_date}\n"
         f"Positions: {n_positions} | Max weight: {max_wt:.2%}\n"
-        f"Tracking error: {te_realized:.2%} | Turnover: {turnover_val:.2%}",
+        f"Turnover: {turnover_val:.2%}{block_msg}",
         level="info"
     )
 
@@ -413,11 +465,13 @@ def run_stop_replacement_optimizer(
     cash exceeds $100K above CB-required cash.
 
     Key differences from full optimizer:
-    - w >= min(w_current, MAX_WEIGHT): positions at/below 5% frozen,
-      overweight positions trimmed back to 5%
+    - w >= min(w_current, effective_max_weight): positions at/below cap frozen,
+      overweight positions trimmed back to the (CB-adjusted) cap
     - No sector neutralization (monthly rebalance restores it)
     - No turnover constraint (turnover naturally capped by available cash + trims)
-    - All other constraints apply: max weight, TE cap, CB invested target
+    - All other constraints apply: max weight (CB-adjusted), CB invested target
+    - At CB tier 3+, new positions are blocked; only existing positions can be
+      topped up to the (CB-adjusted) cap.
 
     Returns DataFrame with columns: ticker, target_weight, sector
     """
@@ -471,28 +525,22 @@ def run_stop_replacement_optimizer(
     w_current = get_current_weights(tickers, nav)
 
     # ----------------------------------------------------------
-    # SPY WEIGHTS (for TE constraint only)
-    # ----------------------------------------------------------
-    n = len(tickers)
-    total_constituents = len(constituents)
-    w_spy = np.ones(n) / total_constituents
-
-    # ----------------------------------------------------------
     # INVESTED TARGET
     # ----------------------------------------------------------
+    n = len(tickers)
     invested_target = get_invested_target(cb_tier)
 
     # ----------------------------------------------------------
-    # LOWER BOUNDS: freeze at/below 5%, allow trim above 5%
+    # LOWER BOUNDS: freeze at/below CB-adjusted cap, trim above it
+    # On CB tier escalation, overweight positions get trimmed to new cap.
     # ----------------------------------------------------------
-    w_lower = np.minimum(w_current, MAX_WEIGHT)
+    effective_max_weight = get_max_weight(cb_tier)
+    w_lower = np.minimum(w_current, effective_max_weight)
 
     # ----------------------------------------------------------
     # CVXPY OPTIMIZATION
     # ----------------------------------------------------------
     w = cp.Variable(n)
-
-    w_active = w - w_spy
 
     risk_aversion = OPT.get("risk_aversion", 1.5)
     objective = cp.Maximize(
@@ -503,16 +551,24 @@ def run_stop_replacement_optimizer(
     constraints = [
         # Long only
         w >= 0,
-        # Max position size
-        w <= MAX_WEIGHT,
-        # Freeze positions at/below 5%, trim overweight to 5%
+        # Max position size (CB-adjusted)
+        w <= effective_max_weight,
+        # Freeze positions at/below cap, trim overweight to cap
         w >= w_lower,
         # Stay invested up to CB-adjusted target
         cp.sum(w) <= invested_target,
         cp.sum(w) >= max(0.30, invested_target - 0.13),
-        # Tracking error cap vs SPY
-        cp.quad_form(w_active, cp.psd_wrap(sigma)) <= TE_CAP ** 2,
     ]
+
+    # No-new-positions block (T3+): zero out indices not currently held.
+    # Cash can only be deployed back into existing positions.
+    if is_no_new_positions_active(cb_tier):
+        new_indices = [i for i in range(n) if w_current[i] < NEW_POSITION_THRESHOLD]
+        if new_indices:
+            for i in new_indices:
+                constraints.append(w[i] == 0)
+            print(f"[optimizer] No-new-positions active (T{cb_tier}): "
+                  f"{len(new_indices)} new tickers blocked from cash deployment")
 
     # NO sector neutralization for stop replacements
     # NO turnover constraint \u2014 turnover = cash deployed + trims
@@ -547,7 +603,7 @@ def run_stop_replacement_optimizer(
         weights = weights / total * invested_target
 
     # Clip any weight pushed above max by renormalization
-    weights = np.minimum(weights, MAX_WEIGHT)
+    weights = np.minimum(weights, effective_max_weight)
 
     constituents_map = constituents.copy()
     constituents_map["sector_mapped"] = constituents_map["sector"].replace(SECTOR_MAP)
@@ -567,7 +623,7 @@ def run_stop_replacement_optimizer(
     n_new = len(result) - sum(1 for t in result["ticker"] if t in
                                [tickers[i] for i in range(n) if w_current[i] > 0.001])
     cash_deployed = (weights.sum() - w_current.sum()) * nav
-    n_trimmed = sum(1 for i in range(n) if w_current[i] > MAX_WEIGHT and weights[i] < w_current[i])
+    n_trimmed = sum(1 for i in range(n) if w_current[i] > effective_max_weight and weights[i] < w_current[i])
 
     print(f"[optimizer] Stop replacement: {len(result)} positions | "
           f"{n_new} new | {n_trimmed} trimmed | cash deployed: ${cash_deployed:,.0f}")

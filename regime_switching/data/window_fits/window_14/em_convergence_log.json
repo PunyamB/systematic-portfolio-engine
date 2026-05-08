@@ -1,0 +1,58 @@
+[
+  {
+    "restart_id": 1,
+    "log_likelihood": 17135.55291119466,
+    "n_iter": 178,
+    "converged": true,
+    "time_seconds": 142.58104181289673
+  },
+  {
+    "restart_id": 2,
+    "log_likelihood": 16979.23560542133,
+    "n_iter": 53,
+    "converged": true,
+    "time_seconds": 42.607402086257935
+  },
+  {
+    "restart_id": 3,
+    "log_likelihood": 17135.628475596382,
+    "n_iter": 178,
+    "converged": true,
+    "time_seconds": 144.275817155838
+  },
+  {
+    "restart_id": 4,
+    "log_likelihood": 17135.481505950393,
+    "n_iter": 180,
+    "converged": true,
+    "time_seconds": 145.93880486488342
+  },
+  {
+    "restart_id": 5,
+    "log_likelihood": 17135.791475018836,
+    "n_iter": 188,
+    "converged": true,
+    "time_seconds": 152.74454951286316
+  },
+  {
+    "restart_id": 6,
+    "log_likelihood": 17135.62710289299,
+    "n_iter": 183,
+    "converged": true,
+    "time_seconds": 147.99143719673157
+  },
+  {
+    "restart_id": 7,
+    "log_likelihood": 17135.59667062643,
+    "n_iter": 165,
+    "converged": true,
+    "time_seconds": 133.963711977005
+  },
+  {
+    "restart_id": 8,
+    "log_likelihood": 17135.62596763846,
+    "n_iter": 189,
+    "converged": true,
+    "time_seconds": 152.7235870361328
+  }
+]

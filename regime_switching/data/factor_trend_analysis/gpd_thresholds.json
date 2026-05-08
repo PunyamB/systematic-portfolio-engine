@@ -1,0 +1,62 @@
+{
+  "vix_level_90d": {
+    "status": "success",
+    "threshold_quantile": 0.85,
+    "threshold_value": 12.380499999999998,
+    "equivalent_top_pct": 15.000000000000002,
+    "xi": 0.10702594091187947,
+    "sigma": 8.4470105775841,
+    "n_exceedances": 470,
+    "ks_p": 0.5057308337158055
+  },
+  "vix_level_120d": {
+    "status": "success",
+    "threshold_quantile": 0.85,
+    "threshold_value": 12.61,
+    "equivalent_top_pct": 15.000000000000002,
+    "xi": 0.11185803928493773,
+    "sigma": 8.48767956425425,
+    "n_exceedances": 476,
+    "ks_p": 0.7539617563491674
+  },
+  "yield_curve_slope_90d": {
+    "status": "success",
+    "threshold_quantile": 0.85,
+    "threshold_value": 0.5000000000000008,
+    "equivalent_top_pct": 15.000000000000002,
+    "xi": -0.2910432409437947,
+    "sigma": 0.1979050655993984,
+    "n_exceedances": 586,
+    "ks_p": 0.10185219515227606
+  },
+  "yield_curve_slope_120d": {
+    "status": "success",
+    "threshold_quantile": 0.9320689655172414,
+    "threshold_value": 0.8099999999999997,
+    "equivalent_top_pct": 6.793103448275861,
+    "xi": -0.08942769898765765,
+    "sigma": 0.10777151173041023,
+    "n_exceedances": 256,
+    "ks_p": 0.15670078474124605
+  },
+  "credit_spread_90d": {
+    "status": "success",
+    "threshold_quantile": 0.9610344827586207,
+    "threshold_value": 4.09,
+    "equivalent_top_pct": 3.896551724137931,
+    "xi": -0.8081136247317818,
+    "sigma": 7.763740299605281,
+    "n_exceedances": 121,
+    "ks_p": 0.2160634569170522
+  },
+  "credit_spread_120d": {
+    "status": "success",
+    "threshold_quantile": 0.85,
+    "threshold_value": 2.6675,
+    "equivalent_top_pct": 15.000000000000002,
+    "xi": 0.7708098535320682,
+    "sigma": 0.9429579839177052,
+    "n_exceedances": 465,
+    "ks_p": 5.619815740260807e-06
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "criteria": {
+    "C1_min_occupancy": {
+      "threshold": 0.03,
+      "observed": 0.0372946318058324,
+      "pass": true
+    },
+    "C2_min_mu_separation": {
+      "threshold": 0.0003,
+      "observed": 0.0012850743699535537,
+      "pass": true
+    },
+    "C3_sigma_separation": {
+      "threshold": 1.15,
+      "observed": [
+        0.0073351709355596135,
+        0.03687751096126585,
+        0.01436490385024827,
+        0.004414240842000658,
+        0.005958138875415716
+      ],
+      "pass": true
+    },
+    "C4_bic_prefers_k5_over_k4": {
+      "k4_bic": -47194.28649871704,
+      "k5_bic": -47226.17705633183,
+      "pass": true
+    }
+  },
+  "all_pass": true,
+  "bic_winner_overall": "K=5",
+  "recommendation": "PROCEED with full 5-state TVTP refit"
+}

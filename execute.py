@@ -24,6 +24,8 @@ from execution.order_manager import (
     reconcile_with_alpaca,
     FILL_WAIT_SECS,
 )
+from utils.rebalance_calendar import mark_rebalance_complete
+from data.storage import load_decision_log
 from compliance.checker import run_pre_trade_checks, run_post_trade_checks
 from data.storage import load_prices, load_portfolio, append_execution_log
 from fund_accounting.nav import load_nav_history
@@ -172,6 +174,20 @@ def run_execution(run_date: date = None) -> dict:
     # STEP 7 -- Save executed weights (drift detection anchor)
     # ----------------------------------------------------------
     _save_executed_weights()
+
+    # ----------------------------------------------------------
+    # STEP 7b -- Mark rebalance complete in calendar state
+    # Resets the trading-day clock for next regime-conditional rebalance.
+    # ----------------------------------------------------------
+    decision_log = load_decision_log()
+    if not decision_log.empty:
+        last_row = decision_log.iloc[-1]
+        current_regime  = str(last_row.get("regime", "recovery")).lower()
+        current_cb_tier = int(last_row.get("cb_tier", 0))
+    else:
+        current_regime  = "recovery"
+        current_cb_tier = 0
+    mark_rebalance_complete(run_date, current_regime, current_cb_tier)
 
     # ----------------------------------------------------------
     # STEP 8 -- Post-trade compliance

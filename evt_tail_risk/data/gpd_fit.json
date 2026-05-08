@@ -1,0 +1,62 @@
+{
+  "synthetic_test": {
+    "true_xi": 0.25,
+    "true_sigma": 1.0,
+    "n_samples": 10000,
+    "n_reps": 100,
+    "fit_failures": 0,
+    "xi_coverage": 0.96,
+    "sigma_coverage": 0.94,
+    "xi_pass": true,
+    "sigma_pass": true,
+    "overall_pass": true
+  },
+  "spy": {
+    "series": "SPY",
+    "threshold": 0.02395447010990955,
+    "n_exceedances": 221,
+    "n_total": 8370,
+    "exceedance_rate": 0.026403823178016726,
+    "xi": 0.30238783027641325,
+    "xi_se": 0.08760808606588301,
+    "xi_ci_95": [
+      0.13067598158728255,
+      0.47409967896554395
+    ],
+    "sigma": 0.008056959637136688,
+    "sigma_se": 0.0008747021896125727,
+    "sigma_ci_95": [
+      0.006342543345496046,
+      0.00977137592877733
+    ],
+    "log_likelihood": 777.6612555839638,
+    "ks_stat": 0.036666214160597455,
+    "ks_pvalue": 0.916901858690695,
+    "ks_passed": true,
+    "tail_type": "Heavy tail (Frechet domain, finite variance)"
+  },
+  "meridian": {
+    "series": "Meridian",
+    "threshold": 0.024927007078142858,
+    "n_exceedances": 99,
+    "n_total": 5297,
+    "exceedance_rate": 0.01868982442892203,
+    "xi": 0.2189997725904153,
+    "xi_se": 0.12251408682457474,
+    "xi_ci_95": [
+      -0.02112783758575118,
+      0.4591273827665818
+    ],
+    "sigma": 0.006880242580878746,
+    "sigma_se": 0.0010796996572886998,
+    "sigma_ci_95": [
+      0.004764031252592895,
+      0.008996453909164598
+    ],
+    "log_likelihood": 372.24430349357857,
+    "ks_stat": 0.04821510095098913,
+    "ks_pvalue": 0.966950878477112,
+    "ks_passed": true,
+    "tail_type": "Heavy tail (Frechet domain, finite variance)"
+  }
+}

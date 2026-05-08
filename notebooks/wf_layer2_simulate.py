@@ -75,7 +75,6 @@ BL_VIEW_CONFIDENCE = 0.25
 # Execution
 MAX_WEIGHT       = 0.05
 COST_BPS_ONE_WAY = 5
-TE_CAP           = 0.06 ** 2
 INITIAL_CAPITAL  = 1_000_000.0
 
 # Trailing stop
@@ -232,16 +231,14 @@ def run_optimizer(mu: np.ndarray, tickers: list, sigma: np.ndarray,
     n      = len(tickers)
     w      = cp.Variable(n)
     w_curr = np.array([current_weights.get(t, 0.0) for t in tickers])
-    w_eq   = np.ones(n) / n
 
     risk    = cp.quad_form(w, cp.psd_wrap(sigma))
     ret_    = mu @ w
     penalty = TURNOVER_LAMBDA * cp.norm1(w - w_curr)
-    te      = cp.quad_form(w - w_eq, cp.psd_wrap(sigma))
 
     prob = cp.Problem(
         cp.Maximize(ret_ - RISK_AVERSION * risk - penalty),
-        [cp.sum(w) == 1, w >= 0, w <= MAX_WEIGHT, te <= TE_CAP]
+        [cp.sum(w) == 1, w >= 0, w <= MAX_WEIGHT]
     )
     for solver in [cp.CLARABEL, cp.SCS]:
         try:

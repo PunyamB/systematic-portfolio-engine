@@ -626,20 +626,19 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
 
     clear_cache()
 
-    health    = PipelineHealth(run_date)
-    rebalance = is_rebalance_day(run_date) or force_rebalance
+    health = PipelineHealth(run_date)
 
+    # rebalance flag computed AFTER Stage 5 (regime detection)
     decision = {
-        "date":          str(run_date),
-        "run_at":        datetime.now().isoformat(),
-        "rebalance_day": rebalance,
+        "date":   str(run_date),
+        "run_at": datetime.now().isoformat(),
     }
 
     print(f"\n[runner] ============================================================")
-    print(f"[runner] Pipeline start: {run_date} | rebalance_day={rebalance}")
+    print(f"[runner] Pipeline start: {run_date}")
     print(f"[runner] ============================================================\n")
 
-    notify(f"Pipeline started for {run_date} | rebalance={rebalance}", level="info")
+    notify(f"Pipeline started for {run_date}", level="info")
 
     # ----------------------------------------------------------
     # STAGE 1 \u2014 Broker health check
@@ -712,6 +711,8 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
     risk_result   = _run_stage(health, "risk_monitor", run_risk_monitor, run_date)
     stop_exits    = []
     drift_trigger = False
+    rebalance     = False
+    rebalance_reason = "risk_monitor_failed"
 
     if risk_result:
         circuit_breaker = risk_result.get("circuit_breaker", {})
@@ -730,15 +731,22 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
         decision["cb_tier"]        = cb_level
         decision["drawdown"]       = risk_result.get("drawdown", 0.0)
         decision["beta"]           = risk_result.get("beta", 1.0)
-        decision["tracking_error"] = risk_result.get("tracking_error", 0.0)
+
+        # ------------------------------------------------------
+        # STAGE 6c \u2014 Rebalance day check (regime + CB conditional)
+        # ------------------------------------------------------
+        rebalance, rebalance_reason = is_rebalance_day(
+            run_date, regime, cb_tier=cb_level, force=force_rebalance
+        )
+        decision["rebalance_day"]    = rebalance
+        decision["rebalance_reason"] = rebalance_reason
+        print(f"[runner] Rebalance check: {rebalance} ({rebalance_reason})")
 
         save_snapshot({
             "date":           str(run_date),
             "cb_tier":        cb_level,
             "drawdown":       risk_result.get("drawdown", 0.0),
             "beta":           risk_result.get("beta", 1.0),
-            "tracking_error": risk_result.get("tracking_error", 0.0),
-            "te_breach":      risk_result.get("te_breach", False),
             "stop_exits":     ",".join(stop_exits),
         }, "risk", run_date)
 
@@ -801,7 +809,8 @@ def _run_pipeline_inner(run_date: date, force_rebalance: bool) -> dict:
             health.record("proposed_trades", "skipped", 0, "optimizer returned empty")
 
     else:
-        next_rebalance = get_next_rebalance_date(run_date)
+        cb_tier_for_next = decision.get("cb_tier", 0)
+        next_rebalance = get_next_rebalance_date(run_date, regime, cb_tier_for_next)
         print(f"[runner] Non-rebalance day \u2014 skipping optimizer | next rebalance: {next_rebalance}")
         health.record("optimizer",       "skipped", 0, f"next rebalance: {next_rebalance}")
         health.record("proposed_trades", "skipped", 0, "non-rebalance day")

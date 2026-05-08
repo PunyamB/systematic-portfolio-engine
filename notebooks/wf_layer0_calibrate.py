@@ -51,7 +51,6 @@ IC_THRESHOLD = log["ic_threshold_rebalances"]
 LAMBDA_SWEEP = log["lambda_sweep_values"]
 RA_SWEEP     = log["risk_aversion_sweep_values"]
 MAX_WEIGHT   = 0.05
-TE_CAP       = 0.06 ** 2
 COST_BPS     = 5
 
 print("[wf_layer0] ================================================")
@@ -258,18 +257,16 @@ def run_sweep_combo(lam: float, risk_aversion: float) -> dict | None:
             (positions.get(t, 0) * (closes.get(t) or 0)) / nav
             for t in tickers
         ])
-        w_eq = np.ones(n) / n
 
         # Optimizer
         w       = cp.Variable(n)
         risk    = cp.quad_form(w, cp.psd_wrap(sigma))
         ret_    = mu @ w
         penalty = lam * cp.norm1(w - w_curr)
-        te      = cp.quad_form(w - w_eq, cp.psd_wrap(sigma))
 
         prob = cp.Problem(
             cp.Maximize(ret_ - risk_aversion * risk - penalty),
-            [cp.sum(w) == 1, w >= 0, w <= MAX_WEIGHT, te <= TE_CAP]
+            [cp.sum(w) == 1, w >= 0, w <= MAX_WEIGHT]
         )
         solved = False
         for solver in [cp.CLARABEL, cp.SCS]:

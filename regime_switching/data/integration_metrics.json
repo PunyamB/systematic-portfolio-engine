@@ -1,0 +1,330 @@
+{
+  "aggregate": {
+    "soft": {
+      "cagr": 0.2344193697577699,
+      "sharpe": 1.3080686446732053,
+      "max_dd": -0.37608526557600974,
+      "n_days": 5314
+    },
+    "hard": {
+      "cagr": 0.23563899749032946,
+      "sharpe": 1.309222164721852,
+      "max_dd": -0.3762803576877334,
+      "n_days": 5314
+    },
+    "cagr_improvement": -0.0012196277325595695,
+    "sharpe_improvement": -0.0011535200486467723,
+    "c3_pass": false
+  },
+  "per_window": [
+    {
+      "window_id": 1,
+      "soft": {
+        "cagr": 0.428381225665468,
+        "sharpe": 2.844760577255572,
+        "max_dd": -0.0880650953271368,
+        "n_days": 251
+      },
+      "hard": {
+        "cagr": 0.4297542950779243,
+        "sharpe": 2.853257353998903,
+        "max_dd": -0.0832968979792883,
+        "n_days": 251
+      },
+      "soft_better_cagr": false,
+      "soft_better_sharpe": false
+    },
+    {
+      "window_id": 2,
+      "soft": {
+        "cagr": 0.20928626975875453,
+        "sharpe": 1.5665473556100953,
+        "max_dd": -0.06959845823366739,
+        "n_days": 250
+      },
+      "hard": {
+        "cagr": 0.23555837605378094,
+        "sharpe": 1.7857492283535537,
+        "max_dd": -0.06825376608484657,
+        "n_days": 250
+      },
+      "soft_better_cagr": false,
+      "soft_better_sharpe": false
+    },
+    {
+      "window_id": 3,
+      "soft": {
+        "cagr": 0.08799366082549342,
+        "sharpe": 0.5816993053135575,
+        "max_dd": -0.13009646464730173,
+        "n_days": 249
+      },
+      "hard": {
+        "cagr": 0.11295773614733284,
+        "sharpe": 0.7213848271249479,
+        "max_dd": -0.11450069150741837,
+        "n_days": 249
+      },
+      "soft_better_cagr": false,
+      "soft_better_sharpe": false
+    },
+    {
+      "window_id": 4,
+      "soft": {
+        "cagr": -0.18910361249313112,
+        "sharpe": -0.7272193101513783,
+        "max_dd": -0.3370023527303091,
+        "n_days": 251
+      },
+      "hard": {
+        "cagr": -0.17913820531864855,
+        "sharpe": -0.6994148857607534,
+        "max_dd": -0.33104413195623783,
+        "n_days": 251
+      },
+      "soft_better_cagr": false,
+      "soft_better_sharpe": false
+    },
+    {
+      "window_id": 5,
+      "soft": {
+        "cagr": 0.5998990888939135,
+        "sharpe": 2.0161238723126984,
+        "max_dd": -0.1785041346168853,
+        "n_days": 250
+      },
+      "hard": {
+        "cagr": 0.546225041995799,
+        "sharpe": 1.901179263902757,
+        "max_dd": -0.18366337224160612,
+        "n_days": 250
+      },
+      "soft_better_cagr": true,
+      "soft_better_sharpe": true
+    },
+    {
+      "window_id": 6,
+      "soft": {
+        "cagr": 0.3685928916301935,
+        "sharpe": 1.8555302836883771,
+        "max_dd": -0.12540818026304923,
+        "n_days": 250
+      },
+      "hard": {
+        "cagr": 0.3584924572109254,
+        "sharpe": 1.7167597242117847,
+        "max_dd": -0.1279570172502319,
+        "n_days": 250
+      },
+      "soft_better_cagr": true,
+      "soft_better_sharpe": true
+    },
+    {
+      "window_id": 7,
+      "soft": {
+        "cagr": 0.28440010187410003,
+        "sharpe": 1.189287775969217,
+        "max_dd": -0.14568816668915752,
+        "n_days": 251
+      },
+      "hard": {
+        "cagr": 0.29768503100584676,
+        "sharpe": 1.218407497261733,
+        "max_dd": -0.13779375376856828,
+        "n_days": 251
+      },
+      "soft_better_cagr": false,
+      "soft_better_sharpe": false
+    },
+    {
+      "window_id": 8,
+      "soft": {
+        "cagr": 0.26991536111779024,
+        "sharpe": 1.8396561572376786,
+        "max_dd": -0.0740108407425365,
+        "n_days": 248
+      },
+      "hard": {
+        "cagr": 0.30343105526568515,
+        "sharpe": 1.9899279247495492,
+        "max_dd": -0.0723394521431896,
+        "n_days": 248
+      },
+      "soft_better_cagr": false,
+      "soft_better_sharpe": false
+    },
+    {
+      "window_id": 9,
+      "soft": {
+        "cagr": 0.5102485624887019,
+        "sharpe": 3.2658759261284485,
+        "max_dd": -0.05043165806304806,
+        "n_days": 250
+      },
+      "hard": {
+        "cagr": 0.47890656017791167,
+        "sharpe": 3.1142474554076034,
+        "max_dd": -0.05125628508932201,
+        "n_days": 250
+      },
+      "soft_better_cagr": true,
+      "soft_better_sharpe": true
+    },
+    {
+      "window_id": 10,
+      "soft": {
+        "cagr": 0.26050151280456135,
+        "sharpe": 1.7866475025088502,
+        "max_dd": -0.07786855489355216,
+        "n_days": 250
+      },
+      "hard": {
+        "cagr": 0.2538881908676054,
+        "sharpe": 1.758979271855066,
+        "max_dd": -0.0831874202443843,
+        "n_days": 250
+      },
+      "soft_better_cagr": true,
+      "soft_better_sharpe": true
+    },
+    {
+      "window_id": 11,
+      "soft": {
+        "cagr": -0.050121553141449615,
+        "sharpe": -0.2404973713519798,
+        "max_dd": -0.16101179041746416,
+        "n_days": 250
+      },
+      "hard": {
+        "cagr": -0.029617777481727114,
+        "sharpe": -0.10340772856281354,
+        "max_dd": -0.1388140372097505,
+        "n_days": 250
+      },
+      "soft_better_cagr": false,
+      "soft_better_sharpe": false
+    },
+    {
+      "window_id": 12,
+      "soft": {
+        "cagr": 0.2631493830885565,
+        "sharpe": 1.6620843123385625,
+        "max_dd": -0.12134177178749206,
+        "n_days": 251
+      },
+      "hard": {
+        "cagr": 0.24757810818396186,
+        "sharpe": 1.5742965928888835,
+        "max_dd": -0.1130606424950481,
+        "n_days": 251
+      },
+      "soft_better_cagr": true,
+      "soft_better_sharpe": true
+    },
+    {
+      "window_id": 13,
+      "soft": {
+        "cagr": 0.381364646822522,
+        "sharpe": 3.0226415811073046,
+        "max_dd": -0.061708699440445325,
+        "n_days": 250
+      },
+      "hard": {
+        "cagr": 0.39224750693094546,
+        "sharpe": 3.082012550995336,
+        "max_dd": -0.05716223920329555,
+        "n_days": 250
+      },
+      "soft_better_cagr": false,
+      "soft_better_sharpe": false
+    },
+    {
+      "window_id": 14,
+      "soft": {
+        "cagr": -0.04385820324106582,
+        "sharpe": -0.2403595204379912,
+        "max_dd": -0.16437395641231245,
+        "n_days": 249
+      },
+      "hard": {
+        "cagr": -0.04035522285402837,
+        "sharpe": -0.2036861902646859,
+        "max_dd": -0.16565429852418556,
+        "n_days": 249
+      },
+      "soft_better_cagr": false,
+      "soft_better_sharpe": false
+    },
+    {
+      "window_id": 15,
+      "soft": {
+        "cagr": 0.3346048981691436,
+        "sharpe": 2.2581166226531257,
+        "max_dd": -0.07439540663626032,
+        "n_days": 250
+      },
+      "hard": {
+        "cagr": 0.35735749870908395,
+        "sharpe": 2.3487330842718928,
+        "max_dd": -0.07793318274539907,
+        "n_days": 250
+      },
+      "soft_better_cagr": false,
+      "soft_better_sharpe": false
+    },
+    {
+      "window_id": 16,
+      "soft": {
+        "cagr": 0.27178532122557497,
+        "sharpe": 1.018087738258135,
+        "max_dd": -0.276264735925844,
+        "n_days": 251
+      },
+      "hard": {
+        "cagr": 0.26160507999590776,
+        "sharpe": 0.9926355181726981,
+        "max_dd": -0.27558745507634574,
+        "n_days": 251
+      },
+      "soft_better_cagr": true,
+      "soft_better_sharpe": true
+    },
+    {
+      "window_id": 17,
+      "soft": {
+        "cagr": 0.42013443641633663,
+        "sharpe": 2.2837991471185553,
+        "max_dd": -0.0725283759364389,
+        "n_days": 250
+      },
+      "hard": {
+        "cagr": 0.4320488723279814,
+        "sharpe": 2.3025757402260623,
+        "max_dd": -0.07572347285690406,
+        "n_days": 250
+      },
+      "soft_better_cagr": false,
+      "soft_better_sharpe": false
+    },
+    {
+      "window_id": "holdout",
+      "soft": {
+        "cagr": 0.20979684800020482,
+        "sharpe": 1.246224771784399,
+        "max_dd": -0.2047709150667223,
+        "n_days": 1046
+      },
+      "hard": {
+        "cagr": 0.19762272598146935,
+        "sharpe": 1.174850851715629,
+        "max_dd": -0.21539242916231138,
+        "n_days": 1046
+      },
+      "soft_better_cagr": true,
+      "soft_better_sharpe": true
+    }
+  ],
+  "windows_won_cagr": 7,
+  "windows_won_sharpe": 7,
+  "n_windows": 18
+}

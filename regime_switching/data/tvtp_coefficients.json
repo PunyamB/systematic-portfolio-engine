@@ -1,0 +1,64 @@
+{
+  "2_state": {
+    "from_state_0": {
+      "state0_to_state1": {
+        "intercept": -0.8662359441360227,
+        "vix_level": 2.551872863472424,
+        "yield_curve_slope": -0.29337297665666884,
+        "credit_spread": 0.40450579878208476
+      }
+    },
+    "from_state_1": {
+      "state1_to_state1": {
+        "intercept": -1.4632987589134132,
+        "vix_level": 1.4261226754114544,
+        "yield_curve_slope": -0.5468730084463173,
+        "credit_spread": 0.4364515222266315
+      }
+    }
+  },
+  "3_state": {
+    "from_state_0": {
+      "state0_to_state1": {
+        "intercept": 0.7298684878796206,
+        "vix_level": 2.9101935697757058,
+        "yield_curve_slope": -0.13324041635988182,
+        "credit_spread": 0.2718631160043317
+      },
+      "state0_to_state2": {
+        "intercept": -2.0829207993966814,
+        "vix_level": 5.125627179357329,
+        "yield_curve_slope": -0.18021963111144923,
+        "credit_spread": 0.12151707718936768
+      }
+    },
+    "from_state_1": {
+      "state1_to_state1": {
+        "intercept": 0.573590207426813,
+        "vix_level": 1.842964114075648,
+        "yield_curve_slope": -0.5432100163197471,
+        "credit_spread": 0.5132518823064106
+      },
+      "state1_to_state2": {
+        "intercept": -3.127915687214932,
+        "vix_level": 3.3815933366282382,
+        "yield_curve_slope": -0.9808068248984245,
+        "credit_spread": 0.9093030307462643
+      }
+    },
+    "from_state_2": {
+      "state2_to_state1": {
+        "intercept": -0.6763977928200245,
+        "vix_level": 1.141964518984122,
+        "yield_curve_slope": -1.190580901449908,
+        "credit_spread": 0.7241465960838096
+      },
+      "state2_to_state2": {
+        "intercept": -2.9087666093971123,
+        "vix_level": 2.401051828692454,
+        "yield_curve_slope": -0.7626688869482777,
+        "credit_spread": 0.34474841241939475
+      }
+    }
+  }
+}

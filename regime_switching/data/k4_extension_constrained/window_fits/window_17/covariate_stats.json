@@ -1,0 +1,13 @@
+{
+  "mean": {
+    "vix_level": 20.47533620404107,
+    "yield_curve_slope": 1.1452749254720107,
+    "credit_spread": 5.544021199072541
+  },
+  "std": {
+    "vix_level": 8.664892401097372,
+    "yield_curve_slope": 0.9180708119963342,
+    "credit_spread": 2.6499065765076337
+  },
+  "n_train_obs": 6038
+}

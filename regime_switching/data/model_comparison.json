@@ -1,0 +1,161 @@
+{
+  "selected_model": "MS-3-TVTP",
+  "comparison_table": {
+    "MS-2-Fixed": {
+      "K": 2,
+      "log_likelihood": 23266.03848176698,
+      "n_params": 6,
+      "bic": -46478.66467946024,
+      "aic": -46520.07696353396,
+      "converged": true,
+      "regime_durations": {
+        "bull": 71.51778936553795,
+        "bear": 33.852431736860325
+      },
+      "regime_separation": 0.44713917280147686,
+      "n_transitions": 112,
+      "avg_transitions_per_year": 3.841567986933442,
+      "regime_quality": {
+        "bull": {
+          "n_days": 4993,
+          "pct_of_sample": 67.95971144684906,
+          "mean_return_ann": 0.22539129994527246,
+          "vol_ann": 0.1118676747923272,
+          "min": -0.025451317550448584,
+          "max": 0.029014545286374743
+        },
+        "bear": {
+          "n_days": 2354,
+          "pct_of_sample": 32.040288553150944,
+          "mean_return_ann": -0.24381489545600155,
+          "vol_ann": 0.30217634732230836,
+          "min": -0.11588653572900726,
+          "max": 0.1355773208841251
+        }
+      }
+    },
+    "MS-3-Fixed": {
+      "K": 3,
+      "log_likelihood": 23603.945426886254,
+      "n_params": 12,
+      "bic": -47101.066285625064,
+      "aic": -47183.89085377251,
+      "converged": true,
+      "regime_durations": {
+        "bull": 37.27331928923351,
+        "bear": 30.603942568941505,
+        "crisis": 19.671518580922584
+      },
+      "regime_separation": 0.9061738156446912,
+      "n_transitions": 182,
+      "avg_transitions_per_year": 6.242547978766844,
+      "regime_quality": {
+        "bull": {
+          "n_days": 3284,
+          "pct_of_sample": 44.69851640125221,
+          "mean_return_ann": 0.2926590428870329,
+          "vol_ann": 0.08706533635918733,
+          "min": -0.019433924861200446,
+          "max": 0.02181732256826509
+        },
+        "bear": {
+          "n_days": 3537,
+          "pct_of_sample": 48.142098815843205,
+          "mean_return_ann": -0.013233361610514008,
+          "vol_ann": 0.19038838196830654,
+          "min": -0.04445618670359325,
+          "max": 0.04032541143486819
+        },
+        "crisis": {
+          "n_days": 526,
+          "pct_of_sample": 7.159384782904588,
+          "mean_return_ann": -0.6898239545652288,
+          "vol_ann": 0.4850955215800513,
+          "min": -0.11588653572900726,
+          "max": 0.1355773208841251
+        }
+      }
+    },
+    "MS-2-TVTP": {
+      "K": 2,
+      "log_likelihood": 23600.272058391296,
+      "n_params": 12,
+      "bic": -47093.71954863515,
+      "aic": -47176.54411678259,
+      "converged": true,
+      "regime_durations": {
+        "bull": 2.9860405564420027,
+        "bear": 1.3198103306016826
+      },
+      "regime_separation": 0.855547823348132,
+      "n_transitions": 1674,
+      "avg_transitions_per_year": 57.41772151898734,
+      "regime_quality": {
+        "bull": {
+          "n_days": 5616,
+          "pct_of_sample": 76.4393630053083,
+          "mean_return_ann": 0.32588769869055684,
+          "vol_ann": 0.09791101105532429,
+          "min": -0.016451894529429734,
+          "max": 0.019999079372327734
+        },
+        "bear": {
+          "n_days": 1731,
+          "pct_of_sample": 23.560636994691713,
+          "mean_return_ann": -0.7387329977601673,
+          "vol_ann": 0.35572204052995676,
+          "min": -0.11588653572900726,
+          "max": 0.1355773208841251
+        }
+      }
+    },
+    "MS-3-TVTP": {
+      "K": 3,
+      "log_likelihood": 23906.07417641956,
+      "n_params": 30,
+      "bic": -47545.08693247051,
+      "aic": -47752.14835283912,
+      "converged": true,
+      "regime_durations": {
+        "bull": 1.853724102641252,
+        "bear": 1.9506449438240203,
+        "crisis": 1.083072968840761
+      },
+      "regime_separation": 1.3542690754603173,
+      "n_transitions": 1560,
+      "avg_transitions_per_year": 53.507554103715805,
+      "regime_quality": {
+        "bull": {
+          "n_days": 3635,
+          "pct_of_sample": 49.475976589083984,
+          "mean_return_ann": 0.3671424701342672,
+          "vol_ann": 0.07187319867624506,
+          "min": -0.01180964775281572,
+          "max": 0.015731354647321855
+        },
+        "bear": {
+          "n_days": 3380,
+          "pct_of_sample": 46.00517217912073,
+          "mean_return_ann": -0.09582380545994001,
+          "vol_ann": 0.19887215601281857,
+          "min": -0.03293901643181346,
+          "max": 0.03652734325736191
+        },
+        "crisis": {
+          "n_days": 332,
+          "pct_of_sample": 4.518851231795291,
+          "mean_return_ann": -1.3832527703618862,
+          "vol_ann": 0.6060584150073861,
+          "min": -0.11588653572900726,
+          "max": 0.1355773208841251
+        }
+      }
+    }
+  },
+  "tvtp_vs_fixed": {
+    "ll_improvement": 302.1287495333054,
+    "bic_improvement": 444.02064684544894,
+    "extra_params": 18,
+    "covariates_justified": true
+  }
+}

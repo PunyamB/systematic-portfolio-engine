@@ -1,0 +1,40 @@
+ticker,trade_type,shares,direction,current_weight,target_weight,delta_weight,trade_value_usd,close,sector,regime,run_date
+NEM,buy,474,BUY,0.0,0.0467,0.0467,46194.54,97.39,Materials,recovery,2026-03-19
+ABBV,buy,236,BUY,0.0,0.05,0.05,49470.12,209.28,Healthcare,recovery,2026-03-19
+PSX,buy,121,BUY,0.0238,0.0454,0.0216,21326.63,176.095,Energy,recovery,2026-03-19
+DLTR,buy,330,BUY,0.0,0.0356,0.0356,35235.24,106.56,Consumer Staples,recovery,2026-03-19
+MU,sell,17,SELL,0.0518,0.0443,-0.0075,-7454.76,434.28,Technology,recovery,2026-03-19
+LUV,buy,297,BUY,0.0,0.0119,0.0119,11790.95,39.62,Industrials,recovery,2026-03-19
+DG,buy,178,BUY,0.0,0.0227,0.0227,22470.52,125.555,Consumer Staples,recovery,2026-03-19
+HAL,buy,727,BUY,0.0,0.0265,0.0265,26257.08,36.07,Energy,recovery,2026-03-19
+ALL,buy,185,BUY,0.0054,0.0441,0.0387,38290.76,206.05,Financials,recovery,2026-03-19
+CF,buy,312,BUY,0.0,0.0411,0.0411,40634.99,130.1633,Materials,recovery,2026-03-19
+CNC,buy,414,BUY,0.0,0.0153,0.0153,15110.03,36.44,Healthcare,recovery,2026-03-19
+ACGL,buy,74,BUY,0.0415,0.0485,0.007,6952.36,93.095,Financials,recovery,2026-03-19
+CVNA,buy,39,BUY,0.0,0.0112,0.0112,11093.68,279.94,Consumer Discretionary,recovery,2026-03-19
+TAP,buy,360,BUY,0.0,0.0153,0.0153,15158.43,42.08,Consumer Staples,recovery,2026-03-19
+PFG,buy,56,BUY,0.0,0.005,0.005,4925.77,86.7145,Financials,recovery,2026-03-19
+NSC,buy,25,BUY,0.0,0.0074,0.0074,7287.91,281.6458,Industrials,recovery,2026-03-19
+VZ,buy,344,BUY,0.0,0.0174,0.0174,17190.33,49.93,Communication Services,recovery,2026-03-19
+RL,sell,21,SELL,0.015,0.0076,-0.0075,-7373.42,337.95,Consumer Discretionary,recovery,2026-03-19
+HCA,buy,2,BUY,0.0,0.001,0.001,1012.62,501.0,Healthcare,recovery,2026-03-19
+KHC,buy,794,BUY,0.0,0.0178,0.0178,17589.11,22.13,Consumer Staples,recovery,2026-03-19
+ADBE,buy,92,BUY,0.0,0.0233,0.0233,23059.38,248.535,Technology,recovery,2026-03-19
+HPE,buy,115,BUY,0.0,0.0025,0.0025,2499.14,21.7,Technology,recovery,2026-03-19
+BA,buy,14,BUY,0.0,0.0029,0.0029,2853.0,200.6,Industrials,recovery,2026-03-19
+DECK,sell,241,SELL,0.0292,0.0037,-0.0255,-25252.99,104.7139,Consumer Discretionary,recovery,2026-03-19
+USB,sell,324,SELL,0.0478,0.031,-0.0167,-16561.86,51.03,Financials,recovery,2026-03-19
+PNC,sell,76,SELL,0.0283,0.0128,-0.0155,-15356.68,199.865,Financials,recovery,2026-03-19
+TTD,buy,523,BUY,0.0,0.0125,0.0125,12372.86,23.65,Technology,recovery,2026-03-19
+BK,sell,172,SELL,0.0407,0.0209,-0.0198,-19547.51,113.64,Financials,recovery,2026-03-19
+BR,buy,11,BUY,0.0,0.0021,0.0021,2114.46,177.4949,Technology,recovery,2026-03-19
+UPS,sell,218,SELL,0.0212,0.0,-0.0212,-20989.04,96.28,,recovery,2026-03-19
+CRH,sell,185,SELL,0.0187,0.0,-0.0187,-18490.75,99.95,,recovery,2026-03-19
+STX,sell,24,SELL,0.0097,0.0,-0.0097,-9559.44,398.31,,recovery,2026-03-19
+MDT,sell,39,SELL,0.0035,0.0,-0.0035,-3491.6,87.29,,recovery,2026-03-19
+VTRS,sell,1129,SELL,0.0152,0.0,-0.0152,-15055.22,13.335,,recovery,2026-03-19
+IEX,sell,21,SELL,0.004,0.0,-0.004,-3935.51,187.405,,recovery,2026-03-19
+HII,sell,7,SELL,0.0029,0.0,-0.0029,-2905.0,415.0,,recovery,2026-03-19
+TEL,sell,77,SELL,0.015,0.0,-0.015,-14833.67,192.645,,recovery,2026-03-19
+RSG,sell,8,SELL,0.002,0.0,-0.002,-2003.58,222.6202,,recovery,2026-03-19
+DELL,sell,78,SELL,0.0118,0.0,-0.0118,-11672.7,149.64999,,recovery,2026-03-19

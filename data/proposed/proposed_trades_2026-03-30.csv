@@ -1,0 +1,37 @@
+ticker,direction,current_weight,target_weight,delta_weight,trade_value_usd,sector,regime,run_date
+CNC,BUY,0.0,0.05,0.05,49386.87,Healthcare,recovery,2026-03-30
+DECK,BUY,0.0,0.0274,0.0274,27040.14,Consumer Discretionary,recovery,2026-03-30
+PFG,BUY,0.005,0.05,0.045,44444.59,Financials,recovery,2026-03-30
+MET,BUY,0.0,0.05,0.05,49386.87,Financials,recovery,2026-03-30
+LULU,BUY,0.0,0.0456,0.0456,45059.01,Consumer Discretionary,recovery,2026-03-30
+MU,BUY,0.0,0.0345,0.0345,34098.34,Technology,recovery,2026-03-30
+DG,BUY,0.0,0.0115,0.0115,11363.49,Consumer Staples,recovery,2026-03-30
+TPR,BUY,0.0,0.0223,0.0223,22064.87,Consumer Discretionary,recovery,2026-03-30
+IBKR,BUY,0.0,0.0028,0.0028,2783.68,Financials,recovery,2026-03-30
+GDDY,BUY,0.0068,0.0297,0.0229,22642.8,Technology,recovery,2026-03-30
+BBY,BUY,0.0,0.0111,0.0111,10957.88,Consumer Discretionary,recovery,2026-03-30
+TRV,BUY,0.0,0.0324,0.0324,31997.39,Financials,recovery,2026-03-30
+ACGL,BUY,0.0156,0.0432,0.0276,27246.7,Financials,recovery,2026-03-30
+ULTA,BUY,0.0,0.0035,0.0035,3503.96,Consumer Discretionary,recovery,2026-03-30
+ADBE,BUY,0.0,0.0042,0.0042,4110.54,Technology,recovery,2026-03-30
+BR,BUY,0.0,0.0318,0.0318,31403.28,Technology,recovery,2026-03-30
+GEN,BUY,0.0,0.0136,0.0136,13426.8,Technology,recovery,2026-03-30
+ABBV,SELL,0.0549,0.05,-0.0049,-4877.45,Healthcare,recovery,2026-03-30
+MTCH,BUY,0.0,0.0013,0.0013,1266.51,Communication Services,recovery,2026-03-30
+CRH,BUY,0.0,0.0192,0.0192,18983.48,Materials,recovery,2026-03-30
+USB,SELL,0.0312,0.0292,-0.002,-1968.15,Financials,recovery,2026-03-30
+NI,SELL,0.0546,0.05,-0.0046,-4536.63,Utilities,recovery,2026-03-30
+CB,SELL,0.0323,0.0141,-0.0181,-17893.17,Financials,recovery,2026-03-30
+T,SELL,0.0544,0.0431,-0.0113,-11154.29,Communication Services,recovery,2026-03-30
+VZ,SELL,0.0308,0.0212,-0.0096,-9505.59,Communication Services,recovery,2026-03-30
+TAP,SELL,0.0187,0.0084,-0.0103,-10146.01,Consumer Staples,recovery,2026-03-30
+PSX,SELL,0.0439,0.0093,-0.0346,-34159.27,Energy,recovery,2026-03-30
+NSC,SELL,0.0319,0.0038,-0.0281,-27770.17,Industrials,recovery,2026-03-30
+CMS,SELL,0.0551,0.0,-0.0551,-54419.2,,recovery,2026-03-30
+APD,SELL,0.0063,0.0,-0.0063,-6190.17,,recovery,2026-03-30
+CVNA,SELL,0.008,0.0,-0.008,-7860.06,,recovery,2026-03-30
+PEG,SELL,0.0206,0.0,-0.0206,-20318.4,,recovery,2026-03-30
+SPG,SELL,0.0057,0.0,-0.0057,-5646.65,,recovery,2026-03-30
+IP,SELL,0.0045,0.0,-0.0045,-4430.16,,recovery,2026-03-30
+SMCI,SELL,0.006,0.0,-0.006,-5964.3,,recovery,2026-03-30
+CBOE,SELL,0.0034,0.0,-0.0034,-3336.0,,recovery,2026-03-30

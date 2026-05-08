@@ -1,0 +1,86 @@
+universe:
+  index: SP500
+  benchmark: SPY
+  min_price: 5.0
+  min_adv_usd: 1000000
+portfolio:
+  initial_capital: 1000000
+  max_position_weight: 0.05
+  cash_buffer: 0.02
+rebalance:
+  frequency: monthly
+  execution_time: 09:35
+  fill_check_time: 09:45
+signals:
+  lookback_momentum: 252
+  lookback_reversal: 5
+  rsi_period: 14
+  rsi_oversold: 30
+  rsi_overbought: 70
+  piotroski_min_score: 0
+  ic_floor: 0.0
+  ic_lookback: 63
+adaptive_optimizer:
+  enabled: true
+  search_grid:
+    risk_aversion:
+    - 0.5
+    - 1.0
+    - 1.5
+    - 2.0
+    - 2.5
+    - 3.0
+    turnover_lambda:
+    - 0.002
+    - 0.005
+    - 0.007
+    - 0.01
+  regimes:
+    bull:
+      risk_aversion: 1.0
+      turnover_lambda: 0.007
+    recovery:
+      risk_aversion: 3.0
+      turnover_lambda: 0.005
+    bear:
+      risk_aversion: 2.5
+      turnover_lambda: 0.002
+    crisis:
+      risk_aversion: 0.5
+      turnover_lambda: 0.01
+optimizer:
+  objective: max_sharpe
+  risk_aversion: 1.5
+  turnover_lambda: 0.005
+  tracking_error_target: 0.04
+  tracking_error_cap: 0.06
+  covariance_method: ledoit_wolf
+  cov_lookback: 252
+turnover:
+  round_trip_cost_bps: 10
+  max_turnover_per_rebalance: 0.3
+drift_rebalance:
+  max_position_drift: 0.03
+  max_portfolio_drift: 0.05
+  max_sector_drift: 0.05
+stop_loss:
+  method: trailing
+  vol_lookback: 25
+  vol_multiplier: 2.0
+  floor: 0.05
+  cap: 0.2
+regime:
+  vix_lookback: 252
+  vix_elevated_threshold: 0.8
+  vix_crisis_threshold: 1.2
+  breadth_high: 0.6
+  breadth_low: 0.4
+  pmi_expansion: 50.0
+  economic_cycle_lookback: 5
+paths:
+  raw_data: data/raw
+  processed_data: data/processed
+  snapshots: data/snapshots
+  approved_trades: sandbox/results
+  logs: sandbox/logs
+  pipeline_health: sandbox/logs/pipeline_health.json

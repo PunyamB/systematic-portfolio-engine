@@ -1,0 +1,165 @@
+# utils/rebalance_calendar.py
+# Regime-conditional rebalance scheduling.
+#
+# Trading-day intervals per regime (configured in settings.yaml):
+#   - bull / recovery: 21 trading days  (~monthly)
+#   - bear:             7 trading days  (~biweekly)
+#   - crisis:           4 trading days  (~weekly)
+#
+# Regime change forces an immediate rebalance and resets the clock.
+# State persisted in data/processed/rebalance_state.json:
+#   { "last_rebalance_date": "YYYY-MM-DD", "last_regime": "<regime>" }
+#
+# Calendar functions are READ-ONLY for state. State is updated only by
+# execute.py via mark_rebalance_complete() after a successful execution.
+
+import json
+from datetime import date
+from pathlib import Path
+
+import pandas as pd
+
+from utils.config_loader import get_config
+
+STATE_FILE = Path("data/processed/rebalance_state.json")
+
+
+# ------------------------------------------------------------
+# STATE I/O
+# ------------------------------------------------------------
+
+def _load_state() -> dict | None:
+    """Returns state dict or None if file missing/corrupt."""
+    if not STATE_FILE.exists():
+        return None
+    try:
+        with open(STATE_FILE) as f:
+            data = json.load(f)
+        if "last_rebalance_date" not in data or "last_regime" not in data:
+            return None
+        return data
+    except Exception:
+        return None
+
+
+def _save_state(last_rebalance_date: date, last_regime: str) -> None:
+    """Writes state file. Called by mark_rebalance_complete()."""
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "last_rebalance_date": str(last_rebalance_date),
+        "last_regime":         str(last_regime).lower(),
+    }
+    with open(STATE_FILE, "w") as f:
+        json.dump(payload, f, indent=2)
+
+
+def _trading_days_between(start_date: date, end_date: date) -> int:
+    """
+    Returns count of trading days strictly after start_date through end_date,
+    using actual trading dates from prices.parquet.
+    """
+    from data.storage import load_prices
+    prices = load_prices()
+    if prices.empty:
+        return 0
+    trading_dates = sorted(pd.to_datetime(prices["date"]).unique())
+    start_ts = pd.Timestamp(start_date)
+    end_ts   = pd.Timestamp(end_date)
+    return len([d for d in trading_dates if start_ts < d <= end_ts])
+
+
+def _interval_for_regime(regime: str) -> int:
+    """Returns trading-day interval for the given regime."""
+    cfg = get_config()
+    intervals = cfg["rebalance"]["regime_trading_days"]
+    return int(intervals.get(str(regime).lower(), intervals.get("recovery", 21)))
+
+
+# ------------------------------------------------------------
+# PUBLIC API
+# ------------------------------------------------------------
+
+def is_rebalance_day(today: date = None, regime: str = "recovery",
+                     force: bool = False) -> tuple[bool, str]:
+    """
+    Returns (is_due, reason). Reason is one of:
+      - "scheduled"     : trading-day interval reached for current regime
+      - "regime_change" : regime differs from last rebalance regime
+      - "first_run"     : no state file yet, force initial rebalance
+      - "forced"        : caller passed force=True
+      - "weekend"       : today is a weekend, skip
+      - "not_due"       : neither condition met
+    """
+    if today is None:
+        today = date.today()
+
+    if force:
+        return True, "forced"
+
+    # No trading on weekends
+    if today.weekday() >= 5:
+        return False, "weekend"
+
+    state = _load_state()
+
+    # First run -- no prior state
+    if state is None:
+        return True, "first_run"
+
+    last_date   = date.fromisoformat(state["last_rebalance_date"])
+    last_regime = state["last_regime"]
+
+    # Regime change forces immediate rebalance
+    if str(regime).lower() != last_regime:
+        return True, "regime_change"
+
+    # Trading-day interval check
+    interval     = _interval_for_regime(regime)
+    days_elapsed = _trading_days_between(last_date, today)
+    if days_elapsed >= interval:
+        return True, "scheduled"
+
+    return False, "not_due"
+
+
+def get_next_rebalance_date(today: date = None,
+                            regime: str = "recovery") -> date | None:
+    """
+    Estimates next scheduled rebalance date based on current regime's
+    trading-day interval. May shift if regime changes before then.
+    Returns None if state missing or no future trading dates available.
+    """
+    from data.storage import load_prices
+
+    if today is None:
+        today = date.today()
+
+    state = _load_state()
+    if state is None:
+        return today  # first run -- next rebalance is today
+
+    last_date    = date.fromisoformat(state["last_rebalance_date"])
+    interval     = _interval_for_regime(regime)
+    days_elapsed = _trading_days_between(last_date, today)
+    days_remaining = max(0, interval - days_elapsed)
+
+    prices = load_prices()
+    if prices.empty:
+        return None
+    trading_dates = sorted(pd.to_datetime(prices["date"]).unique())
+    future_dates  = [d for d in trading_dates if d > pd.Timestamp(today)]
+    if days_remaining == 0:
+        return today
+    if len(future_dates) < days_remaining:
+        return None
+    return future_dates[days_remaining - 1].date()
+
+
+def mark_rebalance_complete(today: date, regime: str) -> None:
+    """
+    Called by execute.py after a successful rebalance execution.
+    Updates state file with the rebalance date and regime, which
+    resets the clock for the next interval.
+    """
+    _save_state(today, regime)
+    print(f"[rebalance_calendar] State updated: {today} | regime={regime}")

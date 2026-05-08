@@ -1,0 +1,76 @@
+{
+  "n_observations": 7347,
+  "date_range": {
+    "start": "1997-01-02",
+    "end": "2026-03-19"
+  },
+  "nan_count": {
+    "returns": 0,
+    "covariates": 0
+  },
+  "returns_stats": {
+    "mean": 0.00029784238503747227,
+    "std": 0.012272742211603908,
+    "skewness": -0.2287718775242616,
+    "kurtosis": 10.580852504155658,
+    "min": -0.11588653572900726,
+    "max": 0.1355773208841251,
+    "annualized_mean": 0.075056281029443,
+    "annualized_vol": 0.1948237427802527
+  },
+  "covariate_correlations": {
+    "vix_level": {
+      "vix_level": 1.0,
+      "yield_curve_slope": 0.14418171430030277,
+      "credit_spread": 0.7094384802346065
+    },
+    "yield_curve_slope": {
+      "vix_level": 0.14418171430030277,
+      "yield_curve_slope": 1.0,
+      "credit_spread": 0.4251399176481106
+    },
+    "credit_spread": {
+      "vix_level": 0.7094384802346065,
+      "yield_curve_slope": 0.4251399176481106,
+      "credit_spread": 1.0
+    }
+  },
+  "max_pairwise_correlation": 0.7094384802346065,
+  "adf_test": {
+    "statistic": -21.60710271659165,
+    "p_value": 0.0,
+    "stationary": true
+  },
+  "covariate_stats": {
+    "vix_level": {
+      "mean": 20.274412685449846,
+      "std": 8.17101465703963,
+      "min": 9.14,
+      "max": 82.69
+    },
+    "yield_curve_slope": {
+      "mean": 0.9746998775010208,
+      "std": 0.9516091100569084,
+      "min": -1.0800000000000005,
+      "max": 2.91
+    },
+    "credit_spread": {
+      "mean": 5.196974275214373,
+      "std": 2.53248594434042,
+      "min": 2.41,
+      "max": 21.82
+    }
+  },
+  "standardization": {
+    "mean": {
+      "vix_level": 20.274412685449846,
+      "yield_curve_slope": 0.9746998775010208,
+      "credit_spread": 5.196974275214373
+    },
+    "std": {
+      "vix_level": 8.17101465703963,
+      "yield_curve_slope": 0.9516091100569084,
+      "credit_spread": 2.53248594434042
+    }
+  }
+}

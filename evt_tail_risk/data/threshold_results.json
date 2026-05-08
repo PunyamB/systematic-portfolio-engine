@@ -1,0 +1,24 @@
+{
+  "spy": {
+    "series": "SPY",
+    "threshold": 0.02395447010990955,
+    "quantile": 0.9736734693877551,
+    "n_exceedances": 221.0,
+    "xi": 0.30238783027641325,
+    "sigma": 0.008056959637136688,
+    "ks_stat": 0.036666214160597455,
+    "ks_pvalue": 0.916901858690695,
+    "ks_passed": true
+  },
+  "meridian": {
+    "series": "Meridian",
+    "threshold": 0.024927007078142858,
+    "quantile": 0.9814285714285714,
+    "n_exceedances": 99.0,
+    "xi": 0.2189997725904153,
+    "sigma": 0.006880242580878746,
+    "ks_stat": 0.04821510095098913,
+    "ks_pvalue": 0.966950878477112,
+    "ks_passed": true
+  }
+}

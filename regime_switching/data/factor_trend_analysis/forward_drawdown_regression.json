@@ -1,0 +1,80 @@
+{
+  "fwd_30d": {
+    "n_obs": 5314,
+    "model_factors_only": {
+      "r_squared": 0.018180437847392095,
+      "adj_r_squared": 0.017625737529791685,
+      "aic": -15497.957614463267,
+      "bic": -15471.645213957987
+    },
+    "model_factors_plus_tvtp": {
+      "r_squared": 0.018342058665815397,
+      "adj_r_squared": 0.017417362036826756,
+      "aic": -15494.832442954561,
+      "bic": -15455.363842196643,
+      "p_crisis_coef": -0.002942825557790672,
+      "p_crisis_pvalue": 0.7941485472352063,
+      "p_bear_coef": -0.0029146559595278573,
+      "p_bear_pvalue": 0.6887213400864041
+    },
+    "r_squared_improvement": 0.00016162081842330256,
+    "likelihood_ratio_test": {
+      "lr_statistic": 0.8748284912944655,
+      "df": 2,
+      "p_value": 0.6457038959734469,
+      "significant_at_5pct": false
+    }
+  },
+  "fwd_60d": {
+    "n_obs": 5314,
+    "model_factors_only": {
+      "r_squared": 0.019348973842535866,
+      "adj_r_squared": 0.018794933714763262,
+      "aic": -12434.793107369085,
+      "bic": -12408.480706863806
+    },
+    "model_factors_plus_tvtp": {
+      "r_squared": 0.020372197513684465,
+      "adj_r_squared": 0.01944941322347493,
+      "aic": -12436.340696827137,
+      "bic": -12396.872096069219,
+      "p_crisis_coef": -0.015586988864293794,
+      "p_crisis_pvalue": 0.49603192758182024,
+      "p_bear_coef": -0.006185443475381105,
+      "p_bear_pvalue": 0.5936657874370832
+    },
+    "r_squared_improvement": 0.0010232236711485987,
+    "likelihood_ratio_test": {
+      "lr_statistic": 5.547589458052244,
+      "df": 2,
+      "p_value": 0.06242467000922414,
+      "significant_at_5pct": false
+    }
+  },
+  "fwd_90d": {
+    "n_obs": 5314,
+    "model_factors_only": {
+      "r_squared": 0.023467241894462476,
+      "adj_r_squared": 0.022915528471804003,
+      "aic": -10808.56952945329,
+      "bic": -10782.257128948011
+    },
+    "model_factors_plus_tvtp": {
+      "r_squared": 0.025067196739366526,
+      "adj_r_squared": 0.024148835018133696,
+      "aic": -10813.283146664036,
+      "bic": -10773.814545906118,
+      "p_crisis_coef": -0.022917007276792765,
+      "p_crisis_pvalue": 0.4974505129641549,
+      "p_bear_coef": -0.008481261195288355,
+      "p_bear_pvalue": 0.566562127828848
+    },
+    "r_squared_improvement": 0.0015999548449040502,
+    "likelihood_ratio_test": {
+      "lr_statistic": 8.713617210745724,
+      "df": 2,
+      "p_value": 0.012819233670441799,
+      "significant_at_5pct": true
+    }
+  }
+}

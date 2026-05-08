@@ -1,0 +1,579 @@
+{
+  "description": "EXP006 walk-forward log. 15 signals, VIX threshold 0.95, MV-monthly only. Extended training from 1997, testing from 2005.",
+  "experiment": "EXP006",
+  "windows": [
+    {
+      "window_id": 1,
+      "train_start": "1997-01-01",
+      "train_end": "2004-12-31",
+      "test_start": "2005-01-01",
+      "test_end": "2005-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.001,
+        "risk_aversion": 2.0,
+        "signal_weights": {
+          "momentum_12_1": 0.0764,
+          "earnings_momentum": 0.0221,
+          "pe_zscore": 0.1207,
+          "pb_zscore": 0.0871,
+          "ev_ebitda_zscore": 0.1305,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0243,
+          "piotroski": 0.0648,
+          "earnings_accruals": 0.0808,
+          "short_term_reversal": 0.1148,
+          "rsi_extremes": 0.1357,
+          "revenue_growth": 0.0202,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1226,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_1\\daily_nav.parquet"
+    },
+    {
+      "window_id": 2,
+      "train_start": "1997-01-01",
+      "train_end": "2005-12-31",
+      "test_start": "2006-01-01",
+      "test_end": "2006-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.01,
+        "risk_aversion": 1.5,
+        "signal_weights": {
+          "momentum_12_1": 0.0976,
+          "earnings_momentum": 0.0168,
+          "pe_zscore": 0.1245,
+          "pb_zscore": 0.0834,
+          "ev_ebitda_zscore": 0.1275,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0375,
+          "piotroski": 0.0701,
+          "earnings_accruals": 0.0871,
+          "short_term_reversal": 0.0935,
+          "rsi_extremes": 0.1161,
+          "revenue_growth": 0.0297,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1162,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_2\\daily_nav.parquet"
+    },
+    {
+      "window_id": 3,
+      "train_start": "1997-01-01",
+      "train_end": "2006-12-31",
+      "test_start": "2007-01-01",
+      "test_end": "2007-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.005,
+        "risk_aversion": 2.0,
+        "signal_weights": {
+          "momentum_12_1": 0.0771,
+          "earnings_momentum": 0.0232,
+          "pe_zscore": 0.1257,
+          "pb_zscore": 0.0787,
+          "ev_ebitda_zscore": 0.1269,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0454,
+          "piotroski": 0.0809,
+          "earnings_accruals": 0.0907,
+          "short_term_reversal": 0.0895,
+          "rsi_extremes": 0.1161,
+          "revenue_growth": 0.0293,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1164,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_3\\daily_nav.parquet"
+    },
+    {
+      "window_id": 4,
+      "train_start": "1997-01-01",
+      "train_end": "2007-12-31",
+      "test_start": "2008-01-01",
+      "test_end": "2008-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.002,
+        "risk_aversion": 1.0,
+        "signal_weights": {
+          "momentum_12_1": 0.0917,
+          "earnings_momentum": 0.0301,
+          "pe_zscore": 0.1326,
+          "pb_zscore": 0.0583,
+          "ev_ebitda_zscore": 0.1336,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0589,
+          "piotroski": 0.0978,
+          "earnings_accruals": 0.0881,
+          "short_term_reversal": 0.0768,
+          "rsi_extremes": 0.0852,
+          "revenue_growth": 0.0354,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1115,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_4\\daily_nav.parquet"
+    },
+    {
+      "window_id": 5,
+      "train_start": "1997-01-01",
+      "train_end": "2008-12-31",
+      "test_start": "2009-01-01",
+      "test_end": "2009-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.001,
+        "risk_aversion": 2.0,
+        "signal_weights": {
+          "momentum_12_1": 0.0897,
+          "earnings_momentum": 0.0319,
+          "pe_zscore": 0.1287,
+          "pb_zscore": 0.0504,
+          "ev_ebitda_zscore": 0.1347,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0554,
+          "piotroski": 0.1087,
+          "earnings_accruals": 0.0888,
+          "short_term_reversal": 0.0784,
+          "rsi_extremes": 0.0826,
+          "revenue_growth": 0.039,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1083,
+          "volume_momentum": 0.0034
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_5\\daily_nav.parquet"
+    },
+    {
+      "window_id": 6,
+      "train_start": "1997-01-01",
+      "train_end": "2009-12-31",
+      "test_start": "2010-01-01",
+      "test_end": "2010-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.002,
+        "risk_aversion": 0.5,
+        "signal_weights": {
+          "momentum_12_1": 0.0603,
+          "earnings_momentum": 0.0425,
+          "pe_zscore": 0.1298,
+          "pb_zscore": 0.0564,
+          "ev_ebitda_zscore": 0.1326,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0478,
+          "piotroski": 0.1088,
+          "earnings_accruals": 0.0915,
+          "short_term_reversal": 0.0872,
+          "rsi_extremes": 0.0927,
+          "revenue_growth": 0.0416,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1088,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_6\\daily_nav.parquet"
+    },
+    {
+      "window_id": 7,
+      "train_start": "1997-01-01",
+      "train_end": "2010-12-31",
+      "test_start": "2011-01-01",
+      "test_end": "2011-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.007,
+        "risk_aversion": 2.0,
+        "signal_weights": {
+          "momentum_12_1": 0.0629,
+          "earnings_momentum": 0.0447,
+          "pe_zscore": 0.125,
+          "pb_zscore": 0.0509,
+          "ev_ebitda_zscore": 0.1283,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0421,
+          "piotroski": 0.1115,
+          "earnings_accruals": 0.0937,
+          "short_term_reversal": 0.0885,
+          "rsi_extremes": 0.0959,
+          "revenue_growth": 0.0486,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1078,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_7\\daily_nav.parquet"
+    },
+    {
+      "window_id": 8,
+      "train_start": "1997-01-01",
+      "train_end": "2011-12-31",
+      "test_start": "2012-01-01",
+      "test_end": "2012-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.005,
+        "risk_aversion": 2.0,
+        "signal_weights": {
+          "momentum_12_1": 0.0604,
+          "earnings_momentum": 0.0453,
+          "pe_zscore": 0.1274,
+          "pb_zscore": 0.0397,
+          "ev_ebitda_zscore": 0.1335,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0385,
+          "piotroski": 0.114,
+          "earnings_accruals": 0.0969,
+          "short_term_reversal": 0.0965,
+          "rsi_extremes": 0.0922,
+          "revenue_growth": 0.0474,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1084,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_8\\daily_nav.parquet"
+    },
+    {
+      "window_id": 9,
+      "train_start": "1997-01-01",
+      "train_end": "2012-12-31",
+      "test_start": "2013-01-01",
+      "test_end": "2013-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.007,
+        "risk_aversion": 1.5,
+        "signal_weights": {
+          "momentum_12_1": 0.0634,
+          "earnings_momentum": 0.0453,
+          "pe_zscore": 0.1253,
+          "pb_zscore": 0.0411,
+          "ev_ebitda_zscore": 0.1267,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0427,
+          "piotroski": 0.1158,
+          "earnings_accruals": 0.0927,
+          "short_term_reversal": 0.0905,
+          "rsi_extremes": 0.0908,
+          "revenue_growth": 0.0469,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1187,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_9\\daily_nav.parquet"
+    },
+    {
+      "window_id": 10,
+      "train_start": "1997-01-01",
+      "train_end": "2013-12-31",
+      "test_start": "2014-01-01",
+      "test_end": "2014-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.005,
+        "risk_aversion": 1.0,
+        "signal_weights": {
+          "momentum_12_1": 0.0656,
+          "earnings_momentum": 0.0454,
+          "pe_zscore": 0.1239,
+          "pb_zscore": 0.0442,
+          "ev_ebitda_zscore": 0.1292,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0411,
+          "piotroski": 0.1167,
+          "earnings_accruals": 0.0904,
+          "short_term_reversal": 0.0826,
+          "rsi_extremes": 0.0864,
+          "revenue_growth": 0.0508,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1236,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_10\\daily_nav.parquet"
+    },
+    {
+      "window_id": 11,
+      "train_start": "1997-01-01",
+      "train_end": "2014-12-31",
+      "test_start": "2015-01-01",
+      "test_end": "2015-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.01,
+        "risk_aversion": 1.0,
+        "signal_weights": {
+          "momentum_12_1": 0.063,
+          "earnings_momentum": 0.0448,
+          "pe_zscore": 0.124,
+          "pb_zscore": 0.0458,
+          "ev_ebitda_zscore": 0.1319,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0479,
+          "piotroski": 0.1157,
+          "earnings_accruals": 0.0866,
+          "short_term_reversal": 0.0844,
+          "rsi_extremes": 0.0844,
+          "revenue_growth": 0.0483,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1232,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_11\\daily_nav.parquet"
+    },
+    {
+      "window_id": 12,
+      "train_start": "1997-01-01",
+      "train_end": "2015-12-31",
+      "test_start": "2016-01-01",
+      "test_end": "2016-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.01,
+        "risk_aversion": 1.0,
+        "signal_weights": {
+          "momentum_12_1": 0.0779,
+          "earnings_momentum": 0.0475,
+          "pe_zscore": 0.1159,
+          "pb_zscore": 0.0374,
+          "ev_ebitda_zscore": 0.1232,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0584,
+          "piotroski": 0.1212,
+          "earnings_accruals": 0.0796,
+          "short_term_reversal": 0.0833,
+          "rsi_extremes": 0.0791,
+          "revenue_growth": 0.0526,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.124,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_12\\daily_nav.parquet"
+    },
+    {
+      "window_id": 13,
+      "train_start": "1997-01-01",
+      "train_end": "2016-12-31",
+      "test_start": "2017-01-01",
+      "test_end": "2017-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.005,
+        "risk_aversion": 1.0,
+        "signal_weights": {
+          "momentum_12_1": 0.0587,
+          "earnings_momentum": 0.0478,
+          "pe_zscore": 0.1194,
+          "pb_zscore": 0.0433,
+          "ev_ebitda_zscore": 0.1239,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0563,
+          "piotroski": 0.1225,
+          "earnings_accruals": 0.0788,
+          "short_term_reversal": 0.0841,
+          "rsi_extremes": 0.0899,
+          "revenue_growth": 0.0502,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1253,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_13\\daily_nav.parquet"
+    },
+    {
+      "window_id": 14,
+      "train_start": "1997-01-01",
+      "train_end": "2017-12-31",
+      "test_start": "2018-01-01",
+      "test_end": "2018-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.007,
+        "risk_aversion": 2.0,
+        "signal_weights": {
+          "momentum_12_1": 0.062,
+          "earnings_momentum": 0.0516,
+          "pe_zscore": 0.1153,
+          "pb_zscore": 0.0378,
+          "ev_ebitda_zscore": 0.122,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.057,
+          "piotroski": 0.1257,
+          "earnings_accruals": 0.0768,
+          "short_term_reversal": 0.0831,
+          "rsi_extremes": 0.0897,
+          "revenue_growth": 0.054,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.125,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_14\\daily_nav.parquet"
+    },
+    {
+      "window_id": 15,
+      "train_start": "1997-01-01",
+      "train_end": "2018-12-31",
+      "test_start": "2019-01-01",
+      "test_end": "2019-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.01,
+        "risk_aversion": 1.5,
+        "signal_weights": {
+          "momentum_12_1": 0.0638,
+          "earnings_momentum": 0.0501,
+          "pe_zscore": 0.1061,
+          "pb_zscore": 0.0286,
+          "ev_ebitda_zscore": 0.1152,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0616,
+          "piotroski": 0.1314,
+          "earnings_accruals": 0.0842,
+          "short_term_reversal": 0.0834,
+          "rsi_extremes": 0.0913,
+          "revenue_growth": 0.0596,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1248,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_15\\daily_nav.parquet"
+    },
+    {
+      "window_id": 16,
+      "train_start": "1997-01-01",
+      "train_end": "2019-12-31",
+      "test_start": "2020-01-01",
+      "test_end": "2020-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.005,
+        "risk_aversion": 1.5,
+        "signal_weights": {
+          "momentum_12_1": 0.0618,
+          "earnings_momentum": 0.0506,
+          "pe_zscore": 0.1069,
+          "pb_zscore": 0.0265,
+          "ev_ebitda_zscore": 0.1117,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0647,
+          "piotroski": 0.1371,
+          "earnings_accruals": 0.0848,
+          "short_term_reversal": 0.0725,
+          "rsi_extremes": 0.0936,
+          "revenue_growth": 0.0609,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.1291,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_16\\daily_nav.parquet"
+    },
+    {
+      "window_id": 17,
+      "train_start": "1997-01-01",
+      "train_end": "2020-12-31",
+      "test_start": "2021-01-01",
+      "test_end": "2021-12-31",
+      "status": "complete",
+      "calibrated_params": {
+        "lambda": 0.007,
+        "risk_aversion": 1.0,
+        "signal_weights": {
+          "momentum_12_1": 0.0624,
+          "earnings_momentum": 0.0554,
+          "pe_zscore": 0.101,
+          "pb_zscore": 0.022,
+          "ev_ebitda_zscore": 0.1084,
+          "roe_stability": 0.0,
+          "gross_margin_trend": 0.0636,
+          "piotroski": 0.1416,
+          "earnings_accruals": 0.0897,
+          "short_term_reversal": 0.0695,
+          "rsi_extremes": 0.0889,
+          "revenue_growth": 0.0676,
+          "low_volatility": 0.0,
+          "fcf_yield": 0.13,
+          "volume_momentum": 0.0
+        }
+      },
+      "ic_weighted_signals": true,
+      "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_17\\daily_nav.parquet"
+    }
+  ],
+  "final_holdout": {
+    "window_id": "holdout",
+    "train_start": "1997-01-01",
+    "train_end": "2021-12-31",
+    "test_start": "2022-01-01",
+    "test_end": "2026-04-01",
+    "status": "complete",
+    "calibrated_params": {
+      "lambda": 0.005,
+      "risk_aversion": 1.5,
+      "signal_weights": {
+        "momentum_12_1": 0.047488698657933266,
+        "earnings_momentum": 0.05413984701312413,
+        "pe_zscore": 0.1039837028705557,
+        "pb_zscore": 0.019679514134619158,
+        "ev_ebitda_zscore": 0.10903051680487057,
+        "roe_stability": 0.0,
+        "gross_margin_trend": 0.06466101038630051,
+        "piotroski": 0.14389869242860132,
+        "earnings_accruals": 0.08701536995472002,
+        "short_term_reversal": 0.0779995982757307,
+        "rsi_extremes": 0.09131012793985588,
+        "revenue_growth": 0.06845113699778667,
+        "low_volatility": 0.0,
+        "fcf_yield": 0.13234178453590228,
+        "volume_momentum": 0.0
+      }
+    },
+    "ic_weighted_signals": true,
+    "test_nav_file": "regime_switching\\data\\k4_extension_constrained\\window_fits\\window_holdout\\daily_nav.parquet"
+  },
+  "ic_threshold_rebalances": 60,
+  "lambda_sweep_values": [
+    0.001,
+    0.002,
+    0.003,
+    0.005,
+    0.007,
+    0.01
+  ],
+  "risk_aversion_sweep_values": [
+    0.5,
+    1.0,
+    1.5,
+    2.0
+  ]
+}

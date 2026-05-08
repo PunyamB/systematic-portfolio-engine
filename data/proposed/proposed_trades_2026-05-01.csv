@@ -1,0 +1,33 @@
+ticker,direction,current_weight,target_weight,delta_weight,trade_value_usd,sector,regime,run_date
+CMCSA,BUY,0.0,0.0485,0.0485,49379.8,Communication Services,recovery,2026-05-01
+EQT,BUY,0.0367,0.05,0.0133,13553.11,Energy,recovery,2026-05-01
+SYF,BUY,0.0,0.05,0.05,50936.72,Financials,recovery,2026-05-01
+DLTR,BUY,0.0,0.0198,0.0198,20160.61,Consumer Staples,recovery,2026-05-01
+PFG,SELL,0.0556,0.05,-0.0056,-5739.76,Financials,recovery,2026-05-01
+NEM,BUY,0.0,0.0327,0.0327,33261.95,Materials,recovery,2026-05-01
+ACGL,BUY,0.0486,0.05,0.0014,1462.4,Financials,recovery,2026-05-01
+LULU,BUY,0.0,0.0193,0.0193,19663.3,Consumer Discretionary,recovery,2026-05-01
+MET,SELL,0.0517,0.05,-0.0017,-1762.6,Financials,recovery,2026-05-01
+BBY,BUY,0.0,0.0148,0.0148,15070.46,Consumer Discretionary,recovery,2026-05-01
+TPR,BUY,0.0,0.0115,0.0115,11715.63,Consumer Discretionary,recovery,2026-05-01
+FCX,BUY,0.0,0.0259,0.0259,26435.96,Materials,recovery,2026-05-01
+GDDY,BUY,0.0,0.0218,0.0218,22198.92,Technology,recovery,2026-05-01
+UNH,BUY,0.0,0.0044,0.0044,4467.46,Healthcare,recovery,2026-05-01
+CTVA,BUY,0.0,0.0355,0.0355,36187.06,Materials,recovery,2026-05-01
+KHC,SELL,0.0518,0.05,-0.0018,-1875.82,Consumer Staples,recovery,2026-05-01
+CF,BUY,0.0095,0.0137,0.0042,4268.64,Materials,recovery,2026-05-01
+DELL,BUY,0.0074,0.009,0.0016,1630.52,Technology,recovery,2026-05-01
+WTW,BUY,0.0,0.0158,0.0158,16078.11,Financials,recovery,2026-05-01
+ADBE,BUY,0.0,0.0091,0.0091,9306.48,Technology,recovery,2026-05-01
+BR,BUY,0.0,0.05,0.05,50936.72,Technology,recovery,2026-05-01
+APTV,SELL,0.0326,0.0285,-0.0041,-4184.37,Consumer Discretionary,recovery,2026-05-01
+T,SELL,0.0493,0.0346,-0.0148,-15047.38,Communication Services,recovery,2026-05-01
+MCK,BUY,0.0,0.0499,0.0499,50831.89,Healthcare,recovery,2026-05-01
+VZ,SELL,0.0233,0.0088,-0.0145,-14774.58,Communication Services,recovery,2026-05-01
+BSX,BUY,0.0,0.0036,0.0036,3705.66,Healthcare,recovery,2026-05-01
+UPS,SELL,0.0198,0.0044,-0.0154,-15647.41,Industrials,recovery,2026-05-01
+CNC,SELL,0.0247,0.0114,-0.0133,-13504.63,Healthcare,recovery,2026-05-01
+CL,SELL,0.0055,0.0,-0.0055,-5586.84,,recovery,2026-05-01
+MTCH,SELL,0.008,0.0,-0.008,-8170.2,,recovery,2026-05-01
+TRV,SELL,0.038,0.0,-0.038,-38671.88,,recovery,2026-05-01
+NOC,SELL,0.0265,0.0,-0.0265,-26993.28,,recovery,2026-05-01

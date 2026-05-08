@@ -37,7 +37,6 @@ INITIAL_CAPITAL    = 1_000_000.0
 COST_BPS_ONE_WAY   = 5
 MAX_WEIGHT         = 0.05
 TURNOVER_LAMBDA    = cfg["optimizer"]["turnover_lambda"]
-TE_CAP             = cfg["optimizer"]["tracking_error_cap"] ** 2
 RISK_AVERSION      = 1.0
 
 # Black-Litterman parameters
@@ -174,15 +173,13 @@ def run_optimizer(mu: np.ndarray, tickers: list, sigma: np.ndarray,
     n      = len(tickers)
     w      = cp.Variable(n)
     w_curr = np.array([current_weights.get(t, 0.0) for t in tickers])
-    w_eq   = np.ones(n) / n
 
     risk    = cp.quad_form(w, cp.psd_wrap(sigma))
     ret_    = mu @ w
     penalty = TURNOVER_LAMBDA * cp.norm1(w - w_curr)
-    te      = cp.quad_form(w - w_eq, cp.psd_wrap(sigma))
 
     objective   = cp.Maximize(ret_ - RISK_AVERSION * risk - penalty)
-    constraints = [cp.sum(w) == 1, w >= 0, w <= MAX_WEIGHT, te <= TE_CAP]
+    constraints = [cp.sum(w) == 1, w >= 0, w <= MAX_WEIGHT]
     prob        = cp.Problem(objective, constraints)
 
     for solver in [cp.CLARABEL, cp.SCS]:

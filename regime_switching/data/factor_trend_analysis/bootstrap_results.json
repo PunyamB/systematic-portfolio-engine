@@ -1,0 +1,245 @@
+{
+  "gpd_crisis_0.3": {
+    "n_episodes": 60,
+    "median": 107.5,
+    "median_ci_low": 60.5,
+    "median_ci_high": 119.0,
+    "mean": 93.33333333333333,
+    "mean_ci_low": 70.7325,
+    "mean_ci_high": 112.07374999999999
+  },
+  "gpd_crisis_0.5": {
+    "n_episodes": 58,
+    "median": 88.0,
+    "median_ci_low": 33.5,
+    "median_ci_high": 111.0,
+    "mean": 85.93333333333334,
+    "mean_ci_low": 60.0,
+    "mean_ci_high": 104.96666666666667
+  },
+  "gpd_crisis_0.7": {
+    "n_episodes": 57,
+    "median": 61.5,
+    "median_ci_low": 10.0,
+    "median_ci_high": 109.5,
+    "mean": 79.06666666666666,
+    "mean_ci_low": 50.86666666666667,
+    "mean_ci_high": 100.56666666666666
+  },
+  "pct_1_crisis_0.3": {
+    "n_episodes": 11,
+    "median": 129.0,
+    "median_ci_low": 129.0,
+    "median_ci_high": 129.0,
+    "mean": 123.18181818181819,
+    "mean_ci_low": 123.18181818181819,
+    "mean_ci_high": 123.18181818181819
+  },
+  "pct_1_crisis_0.5": {
+    "n_episodes": 11,
+    "median": 111.0,
+    "median_ci_low": 111.0,
+    "median_ci_high": 111.0,
+    "mean": 104.81818181818181,
+    "mean_ci_low": 104.81818181818181,
+    "mean_ci_high": 104.81818181818181
+  },
+  "pct_1_crisis_0.7": {
+    "n_episodes": 11,
+    "median": 49.0,
+    "median_ci_low": 49.0,
+    "median_ci_high": 49.0,
+    "mean": 94.63636363636364,
+    "mean_ci_low": 94.63636363636364,
+    "mean_ci_high": 94.63636363636364
+  },
+  "pct_10_crisis_0.3": {
+    "n_episodes": 62,
+    "median": 110.0,
+    "median_ci_low": 60.5,
+    "median_ci_high": 128.5,
+    "mean": 98.35,
+    "mean_ci_low": 71.23333333333333,
+    "mean_ci_high": 121.78333333333333
+  },
+  "pct_10_crisis_0.5": {
+    "n_episodes": 60,
+    "median": 101.0,
+    "median_ci_low": 46.0,
+    "median_ci_high": 114.0,
+    "mean": 86.58333333333333,
+    "mean_ci_low": 63.21666666666667,
+    "mean_ci_high": 108.75
+  },
+  "pct_10_crisis_0.7": {
+    "n_episodes": 60,
+    "median": 67.5,
+    "median_ci_low": 14.0,
+    "median_ci_high": 113.51249999999999,
+    "mean": 79.06666666666666,
+    "mean_ci_low": 52.76375,
+    "mean_ci_high": 105.01666666666667
+  },
+  "pct_13_crisis_0.3": {
+    "n_episodes": 69,
+    "median": 111.0,
+    "median_ci_low": 75.0,
+    "median_ci_high": 129.0,
+    "mean": 99.63333333333334,
+    "mean_ci_low": 75.56666666666666,
+    "mean_ci_high": 119.18333333333334
+  },
+  "pct_13_crisis_0.5": {
+    "n_episodes": 67,
+    "median": 104.0,
+    "median_ci_low": 63.0,
+    "median_ci_high": 110.5,
+    "mean": 89.225,
+    "mean_ci_low": 69.15,
+    "mean_ci_high": 107.31666666666666
+  },
+  "pct_13_crisis_0.7": {
+    "n_episodes": 66,
+    "median": 67.5,
+    "median_ci_low": 18.0,
+    "median_ci_high": 109.02499999999998,
+    "mean": 82.20833333333333,
+    "mean_ci_low": 61.86,
+    "mean_ci_high": 100.88708333333331
+  },
+  "pct_2_crisis_0.3": {
+    "n_episodes": 24,
+    "median": 60.0,
+    "median_ci_low": 60.0,
+    "median_ci_high": 60.0,
+    "mean": 77.29166666666667,
+    "mean_ci_low": 77.29166666666667,
+    "mean_ci_high": 77.29166666666667
+  },
+  "pct_2_crisis_0.5": {
+    "n_episodes": 24,
+    "median": 54.5,
+    "median_ci_low": 54.5,
+    "median_ci_high": 54.5,
+    "mean": 68.875,
+    "mean_ci_low": 68.875,
+    "mean_ci_high": 68.875
+  },
+  "pct_2_crisis_0.7": {
+    "n_episodes": 24,
+    "median": 26.5,
+    "median_ci_low": 26.5,
+    "median_ci_high": 26.5,
+    "mean": 59.541666666666664,
+    "mean_ci_low": 59.541666666666664,
+    "mean_ci_high": 59.541666666666664
+  },
+  "pct_3_crisis_0.3": {
+    "n_episodes": 31,
+    "median": 54.5,
+    "median_ci_low": 54.5,
+    "median_ci_high": 60.0,
+    "mean": 68.5,
+    "mean_ci_low": 68.5,
+    "mean_ci_high": 73.56666666666666
+  },
+  "pct_3_crisis_0.5": {
+    "n_episodes": 31,
+    "median": 28.0,
+    "median_ci_low": 28.0,
+    "median_ci_high": 38.5,
+    "mean": 61.666666666666664,
+    "mean_ci_low": 61.666666666666664,
+    "mean_ci_high": 66.73333333333333
+  },
+  "pct_3_crisis_0.7": {
+    "n_episodes": 31,
+    "median": 25.0,
+    "median_ci_low": 25.0,
+    "median_ci_high": 25.0,
+    "mean": 54.0,
+    "mean_ci_low": 54.0,
+    "mean_ci_high": 59.166666666666664
+  },
+  "pct_4_crisis_0.3": {
+    "n_episodes": 37,
+    "median": 68.0,
+    "median_ci_low": 67.5,
+    "median_ci_high": 88.0,
+    "mean": 77.03333333333333,
+    "mean_ci_low": 72.76666666666667,
+    "mean_ci_high": 85.06666666666666
+  },
+  "pct_4_crisis_0.5": {
+    "n_episodes": 37,
+    "median": 54.5,
+    "median_ci_low": 38.5,
+    "median_ci_high": 60.5,
+    "mean": 66.7,
+    "mean_ci_low": 62.43333333333333,
+    "mean_ci_high": 74.73333333333333
+  },
+  "pct_4_crisis_0.7": {
+    "n_episodes": 37,
+    "median": 25.0,
+    "median_ci_low": 18.0,
+    "median_ci_high": 38.5,
+    "mean": 56.733333333333334,
+    "mean_ci_low": 52.56666666666667,
+    "mean_ci_high": 65.6
+  },
+  "pct_5_crisis_0.3": {
+    "n_episodes": 40,
+    "median": 88.0,
+    "median_ci_low": 75.0,
+    "median_ci_high": 109.0,
+    "mean": 84.0,
+    "mean_ci_low": 73.73333333333333,
+    "mean_ci_high": 93.83333333333333
+  },
+  "pct_5_crisis_0.5": {
+    "n_episodes": 40,
+    "median": 60.5,
+    "median_ci_low": 38.5,
+    "median_ci_high": 68.0,
+    "mean": 73.66666666666667,
+    "mean_ci_low": 63.4,
+    "mean_ci_high": 84.43333333333334
+  },
+  "pct_5_crisis_0.7": {
+    "n_episodes": 40,
+    "median": 21.5,
+    "median_ci_low": 14.0,
+    "median_ci_high": 54.5,
+    "mean": 61.2,
+    "mean_ci_low": 51.03333333333333,
+    "mean_ci_high": 74.46666666666667
+  },
+  "pct_7_crisis_0.3": {
+    "n_episodes": 46,
+    "median": 109.0,
+    "median_ci_low": 75.0,
+    "median_ci_high": 114.5,
+    "mean": 95.13333333333334,
+    "mean_ci_low": 75.73333333333333,
+    "mean_ci_high": 102.36666666666666
+  },
+  "pct_7_crisis_0.5": {
+    "n_episodes": 46,
+    "median": 63.0,
+    "median_ci_low": 38.5,
+    "median_ci_high": 88.0,
+    "mean": 74.73333333333333,
+    "mean_ci_low": 58.5,
+    "mean_ci_high": 87.86666666666666
+  },
+  "pct_7_crisis_0.7": {
+    "n_episodes": 46,
+    "median": 38.5,
+    "median_ci_low": 10.0,
+    "median_ci_high": 62.0,
+    "mean": 64.86666666666666,
+    "mean_ci_low": 46.13333333333333,
+    "mean_ci_high": 81.53333333333333
+  }
+}

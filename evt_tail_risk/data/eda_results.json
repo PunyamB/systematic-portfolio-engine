@@ -1,0 +1,126 @@
+{
+  "spy": [
+    {
+      "test": "Jarque-Bera",
+      "series": "SPY",
+      "statistic": 44552.37159818746,
+      "p_value": 0.0,
+      "reject_at_001": true,
+      "skewness": 0.24278601658376991,
+      "excess_kurtosis": 11.292163458169458
+    },
+    {
+      "test": "Anderson-Darling",
+      "series": "SPY",
+      "statistic": 148.0419652795499,
+      "critical_value_1pct": 1.035,
+      "reject_at_001": true
+    },
+    {
+      "test": "Shapiro-Wilk",
+      "series": "SPY",
+      "statistic": 0.8949052562165047,
+      "p_value": 4.747315306814784e-50,
+      "reject_at_001": true,
+      "subsampled": true,
+      "sample_size": 5000
+    },
+    {
+      "test": "Ljung-Box |returns|",
+      "series": "SPY",
+      "lags_tested": 20,
+      "results": {
+        "lag_10": {
+          "statistic": 7658.718662037165,
+          "p_value": 0.0,
+          "significant": true
+        },
+        "lag_20": {
+          "statistic": 12119.590389907322,
+          "p_value": 0.0,
+          "significant": true
+        }
+      }
+    },
+    {
+      "test": "Ljung-Box returns^2",
+      "series": "SPY",
+      "lags_tested": 20,
+      "results": {
+        "lag_10": {
+          "statistic": 6361.6691214156845,
+          "p_value": 0.0,
+          "significant": true
+        },
+        "lag_20": {
+          "statistic": 8927.27580687468,
+          "p_value": 0.0,
+          "significant": true
+        }
+      }
+    }
+  ],
+  "meridian": [
+    {
+      "test": "Jarque-Bera",
+      "series": "Meridian",
+      "statistic": 4267.944774555722,
+      "p_value": 0.0,
+      "reject_at_001": true,
+      "skewness": 0.27691954040697236,
+      "excess_kurtosis": 4.362424829828495
+    },
+    {
+      "test": "Anderson-Darling",
+      "series": "Meridian",
+      "statistic": 37.59054296688555,
+      "critical_value_1pct": 1.035,
+      "reject_at_001": true
+    },
+    {
+      "test": "Shapiro-Wilk",
+      "series": "Meridian",
+      "statistic": 0.9589041890847761,
+      "p_value": 2.0099863328324767e-35,
+      "reject_at_001": true,
+      "subsampled": true,
+      "sample_size": 5000
+    },
+    {
+      "test": "Ljung-Box |returns|",
+      "series": "Meridian",
+      "lags_tested": 20,
+      "results": {
+        "lag_10": {
+          "statistic": 1452.6667782077059,
+          "p_value": 4.2086700795971e-306,
+          "significant": true
+        },
+        "lag_20": {
+          "statistic": 2085.958593214783,
+          "p_value": 0.0,
+          "significant": true
+        }
+      }
+    },
+    {
+      "test": "Ljung-Box returns^2",
+      "series": "Meridian",
+      "lags_tested": 20,
+      "results": {
+        "lag_10": {
+          "statistic": 1223.897101393319,
+          "p_value": 1.008353993819799e-256,
+          "significant": true
+        },
+        "lag_20": {
+          "statistic": 1739.941453214546,
+          "p_value": 0.0,
+          "significant": true
+        }
+      }
+    }
+  ],
+  "normality_rejected": true,
+  "volatility_clustering_confirmed": true
+}

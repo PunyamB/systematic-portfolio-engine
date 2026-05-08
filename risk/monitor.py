@@ -1,7 +1,7 @@
 # risk/monitor.py
 # Daily risk monitoring module.
 # Handles: circuit breakers, trailing stops, drift detection,
-# beta/tracking error computation, and liquidity scoring.
+# beta computation, and liquidity scoring.
 # Runs EOD after NAV computation.
 
 import pandas as pd
@@ -271,7 +271,7 @@ def check_drift(executed_weights: pd.DataFrame) -> dict:
 
 
 # ------------------------------------------------------------
-# BETA AND TRACKING ERROR
+# BETA
 # ------------------------------------------------------------
 
 def compute_beta(prices: pd.DataFrame, spy_prices: pd.DataFrame, lookback: int = 252) -> float:
@@ -320,41 +320,6 @@ def compute_beta(prices: pd.DataFrame, spy_prices: pd.DataFrame, lookback: int =
     return weighted_beta
 
 
-def compute_tracking_error(nav_history: pd.DataFrame, spy_prices: pd.DataFrame, lookback: int = 63) -> float:
-    """
-    Computes annualized tracking error of portfolio vs SPY.
-    Uses last 63 trading days (~1 quarter).
-    """
-    if nav_history.empty or spy_prices.empty or len(nav_history) < 10:
-        return 0.0
-
-    portfolio_returns = (
-        nav_history.sort_values("date")
-        .tail(lookback)
-        .set_index("date")["nav"]
-        .pct_change()
-        .dropna()
-    )
-
-    spy_returns = (
-        spy_prices.sort_values("date")
-        .tail(lookback)
-        .set_index("date")["close"]
-        .pct_change()
-        .dropna()
-    )
-
-    aligned = pd.concat([portfolio_returns, spy_returns], axis=1).dropna()
-    if len(aligned) < 10:
-        return 0.0
-
-    aligned.columns = ["portfolio", "spy"]
-    active_returns = aligned["portfolio"] - aligned["spy"]
-    tracking_error = float(active_returns.std() * np.sqrt(252))
-
-    return tracking_error
-
-
 # ------------------------------------------------------------
 # LIQUIDITY SCORING
 # ------------------------------------------------------------
@@ -399,7 +364,7 @@ def run_risk_monitor(run_date: date = None) -> dict:
     Loads prices and SPY prices from storage (cached).
     Returns dict with all risk metrics and flags.
     Keys: nav, circuit_breaker, stop_exits, stop_triggers, drift,
-          liquidity, beta, tracking_error, te_breach, drawdown
+          liquidity, beta, drawdown
     """
     if run_date is None:
         run_date = date.today()
@@ -434,24 +399,14 @@ def run_risk_monitor(run_date: date = None) -> dict:
             or drift_result["sector_drift"]
         )
 
-    tracking_error = 0.0
-    beta           = 1.0
+    beta = 1.0
     if not spy_prices.empty:
-        tracking_error = compute_tracking_error(nav_history, spy_prices)
-        beta           = compute_beta(prices, spy_prices)
-
-    te_breach = tracking_error > cfg["optimizer"]["tracking_error_cap"]
+        beta = compute_beta(prices, spy_prices)
 
     drawdown = circuit_breaker.get("drawdown", 0.0)
 
-    print(f"[risk] Beta: {beta:.3f} | Tracking Error: {tracking_error:.2%} | TE breach: {te_breach}")
+    print(f"[risk] Beta: {beta:.3f}")
     print(f"[risk] Stop exits: {len(stop_exits)} | CB tier: {circuit_breaker['tier']} | Drift triggered: {drift_result['triggered']}")
-
-    if te_breach:
-        notify(
-            f"Tracking error breach: {tracking_error:.2%} exceeds cap {cfg['optimizer']['tracking_error_cap']:.0%}",
-            level="warning"
-        )
 
     return {
         "nav":             nav,
@@ -461,7 +416,5 @@ def run_risk_monitor(run_date: date = None) -> dict:
         "drift":           drift_result,
         "liquidity":       liquidity_scores,
         "beta":            beta,
-        "tracking_error":  tracking_error,
-        "te_breach":       te_breach,
         "drawdown":        drawdown,
     }

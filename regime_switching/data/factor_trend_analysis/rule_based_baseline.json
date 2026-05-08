@@ -1,0 +1,15 @@
+{
+  "n_episodes_compared": 29,
+  "rb_fire_rate": 0.3103448275862069,
+  "tvtp_fire_rate": 0.6896551724137931,
+  "rb_median_lead": 55.0,
+  "tvtp_median_lead": 38.5,
+  "both_fired_n": 9,
+  "paired_test": {
+    "mean_diff_days": 27.0,
+    "median_diff_days": 28.0,
+    "t_statistic": 2.457933372589338,
+    "t_p_value": 0.03944567434896059,
+    "wilcoxon_p_value": 0.0546875
+  }
+}

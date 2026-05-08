@@ -1,0 +1,111 @@
+# ============================================================
+# SYSTEMATIC PORTFOLIO ENGINE — ADAPTIVE REGIME BACKTEST
+# Dynamically alters optimizer risk profiles based on market regime.
+# ============================================================
+
+# --- UNIVERSE & BENCHMARK ---
+universe:
+  index: SP500
+  benchmark: SPY
+  min_price: 5.0
+  min_adv_usd: 1_000_000
+
+# --- CAPITAL ---
+portfolio:
+  initial_capital: 1_000_000
+  max_position_weight: 0.05
+  cash_buffer: 0.02
+
+# --- REBALANCE ---
+rebalance:
+  frequency: monthly
+  execution_time: "09:35"
+  fill_check_time: "09:45"
+
+# --- SIGNALS ---
+signals:
+  lookback_momentum: 252
+  lookback_reversal: 5
+  rsi_period: 14
+  rsi_oversold: 30
+  rsi_overbought: 70
+  piotroski_min_score: 0
+  ic_floor: 0.0
+  ic_lookback: 63
+  
+# --- REGIME ADAPTIVE OPTIMIZER ---
+# ** NEW FEATURE: Dynamically overrides base optimizer settings based on 
+#   the current day's detected composite regime. 
+adaptive_optimizer:
+  enabled: true
+
+  # --- PARAMETER SEARCH GRID ---
+  # regime_param_search.py sweeps all combinations and finds
+  # the (risk_aversion, turnover_lambda) that maximizes Sharpe per regime.
+  # Results are then auto-patched into 'regimes' at runtime.
+  search_grid:
+    risk_aversion:   [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
+    turnover_lambda: [0.002, 0.005, 0.007, 0.010]
+
+  # --- REGIME DEFAULTS (overridden at runtime by search results) ---
+  regimes:
+    bull:
+      risk_aversion: 1.0
+      turnover_lambda: 0.007
+    recovery:
+      risk_aversion: 1.5
+      turnover_lambda: 0.005
+    bear:
+      risk_aversion: 2.5
+      turnover_lambda: 0.002
+    crisis:
+      risk_aversion: 0.5
+      turnover_lambda: 0.010
+
+# --- OPTIMIZER (Baseline if adaptive is off) ---
+optimizer:
+  objective: max_sharpe
+  risk_aversion: 1.5
+  turnover_lambda: 0.005
+  tracking_error_target: 0.04
+  tracking_error_cap: 0.06
+  covariance_method: ledoit_wolf
+  cov_lookback: 252
+
+# --- TURNOVER ---
+turnover:
+  round_trip_cost_bps: 10
+  max_turnover_per_rebalance: 0.30
+
+# --- DRIFT REBALANCE ---
+drift_rebalance:
+  max_position_drift: 0.03
+  max_portfolio_drift: 0.05
+  max_sector_drift: 0.05
+
+# --- TRAILING STOPS ---
+stop_loss:
+  method: trailing
+  vol_lookback: 25
+  vol_multiplier: 2.0
+  floor: 0.05
+  cap: 0.20
+
+# --- REGIME DETECTION (Used by precompute) ---
+regime:
+  vix_lookback: 252
+  vix_elevated_threshold: 0.80
+  vix_crisis_threshold: 1.20
+  breadth_high: 0.60
+  breadth_low: 0.40
+  pmi_expansion: 50.0
+  economic_cycle_lookback: 5
+
+# --- PATHS ---
+paths:
+  raw_data: data/raw
+  processed_data: data/processed
+  snapshots: data/snapshots
+  approved_trades: sandbox/results
+  logs: sandbox/logs
+  pipeline_health: sandbox/logs/pipeline_health.json
