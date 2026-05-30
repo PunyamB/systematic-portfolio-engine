@@ -164,11 +164,11 @@ stop_loss:
 # ============================================================
 circuit_breaker:
   # Drawdown thresholds (lower bound for each tier)
-  t1_pct: 0.020
-  t2_pct: 0.030
-  t3_pct: 0.0685
-  t4_pct: 0.145
-  t5_pct: 0.215
+  t1_pct: 0.030
+  t2_pct: 0.055
+  t3_pct: 0.100
+  t4_pct: 0.140
+  t5_pct: 0.180
 
   # Recovery ratio for re-engagement after CB activation
   recovery_ratio: 0.40
