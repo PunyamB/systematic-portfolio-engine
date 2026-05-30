@@ -1,0 +1,23 @@
+ticker,direction,current_weight,target_weight,delta_weight,trade_value_usd,sector,regime,run_date
+EXE,BUY,0.0476,0.05,0.0024,2503.28,Energy,recovery,2026-05-22
+EQT,BUY,0.0476,0.05,0.0024,2483.86,Energy,recovery,2026-05-22
+APA,BUY,0.0461,0.05,0.0039,3965.8,Energy,recovery,2026-05-22
+NEM,BUY,0.0,0.05,0.05,51475.36,Materials,recovery,2026-05-22
+CNC,BUY,0.0482,0.05,0.0018,1831.04,Healthcare,recovery,2026-05-22
+UNH,BUY,0.0184,0.05,0.0316,32573.61,Healthcare,recovery,2026-05-22
+IBKR,BUY,0.0,0.05,0.05,51475.36,Financials,recovery,2026-05-22
+TKO,BUY,0.0,0.0417,0.0417,42981.41,Communication Services,recovery,2026-05-22
+LULU,SELL,0.0525,0.05,-0.0025,-2523.04,Consumer Discretionary,recovery,2026-05-22
+ALL,BUY,0.0,0.05,0.05,51475.36,Financials,recovery,2026-05-22
+DLTR,BUY,0.0,0.0016,0.0016,1632.89,Consumer Staples,recovery,2026-05-22
+DECK,SELL,0.0537,0.0234,-0.0303,-31161.12,Consumer Discretionary,recovery,2026-05-22
+FCX,BUY,0.0,0.05,0.05,51475.36,Materials,recovery,2026-05-22
+ADBE,BUY,0.0,0.05,0.05,51475.36,Technology,recovery,2026-05-22
+MU,BUY,0.0366,0.05,0.0134,13783.75,Technology,recovery,2026-05-22
+PAYX,SELL,0.0512,0.0389,-0.0123,-12676.0,Industrials,recovery,2026-05-22
+SNDK,SELL,0.0505,0.015,-0.0355,-36527.76,Technology,recovery,2026-05-22
+KHC,SELL,0.0499,0.0,-0.0499,-51332.4,,recovery,2026-05-22
+MET,SELL,0.0513,0.0,-0.0513,-52786.8,,recovery,2026-05-22
+VZ,SELL,0.0087,0.0,-0.0087,-8989.79,,recovery,2026-05-22
+EA,SELL,0.0172,0.0,-0.0172,-17723.2,,recovery,2026-05-22
+UAL,SELL,0.04,0.0,-0.04,-41211.63,,recovery,2026-05-22

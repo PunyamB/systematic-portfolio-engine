@@ -1,0 +1,20 @@
+ticker,direction,current_weight,target_weight,delta_weight,trade_value_usd,sector,regime,run_date
+CMCSA,BUY,0.0,0.05,0.05,49974.33,Communication Services,recovery,2026-05-15
+COF,SELL,0.0514,0.05,-0.0014,-1396.08,Financials,recovery,2026-05-15
+APA,SELL,0.0535,0.05,-0.0035,-3492.55,Energy,recovery,2026-05-15
+CNC,BUY,0.0158,0.05,0.0342,34173.85,Healthcare,recovery,2026-05-15
+PRU,BUY,0.0,0.0139,0.0139,13851.84,Financials,recovery,2026-05-15
+PAYX,BUY,0.0,0.05,0.05,49974.33,Industrials,recovery,2026-05-15
+COP,SELL,0.0212,0.0093,-0.0119,-11897.54,Energy,recovery,2026-05-15
+SNDK,BUY,0.0,0.05,0.05,49974.33,Technology,recovery,2026-05-15
+MU,BUY,0.0344,0.037,0.0026,2558.45,Technology,recovery,2026-05-15
+UNH,BUY,0.0047,0.0193,0.0146,14571.83,Healthcare,recovery,2026-05-15
+UAL,BUY,0.0,0.0389,0.0389,38846.84,Industrials,recovery,2026-05-15
+KR,SELL,0.0489,0.0218,-0.0272,-27152.76,Consumer Staples,recovery,2026-05-15
+EA,SELL,0.0267,0.0175,-0.0092,-9189.11,Technology,recovery,2026-05-15
+NI,SELL,0.0228,0.0,-0.0228,-22821.68,,recovery,2026-05-15
+PFG,SELL,0.0507,0.0,-0.0507,-50712.48,,recovery,2026-05-15
+CTVA,SELL,0.0368,0.0,-0.0368,-36808.38,,recovery,2026-05-15
+PEG,SELL,0.0489,0.0,-0.0489,-48845.16,,recovery,2026-05-15
+F,SELL,0.0277,0.0,-0.0277,-27702.48,,recovery,2026-05-15
+DUK,SELL,0.0178,0.0,-0.0178,-17814.93,,recovery,2026-05-15

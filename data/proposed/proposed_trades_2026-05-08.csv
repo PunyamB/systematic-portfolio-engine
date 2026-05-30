@@ -1,0 +1,26 @@
+ticker,direction,current_weight,target_weight,delta_weight,trade_value_usd,sector,regime,run_date
+SYF,BUY,0.0482,0.05,0.0018,1804.81,Financials,recovery,2026-05-08
+EXE,BUY,0.0467,0.05,0.0033,3370.84,Energy,recovery,2026-05-08
+COP,SELL,0.0197,0.0093,-0.0104,-10494.43,Energy,recovery,2026-05-08
+CNC,BUY,0.0151,0.05,0.0349,35223.6,Healthcare,recovery,2026-05-08
+ALL,BUY,0.0,0.05,0.05,50452.88,Financials,recovery,2026-05-08
+EG,BUY,0.0,0.05,0.05,50452.88,Financials,recovery,2026-05-08
+BBY,BUY,0.0146,0.05,0.0354,35722.04,Consumer Discretionary,recovery,2026-05-08
+F,BUY,0.0249,0.0327,0.0077,7793.1,Consumer Discretionary,recovery,2026-05-08
+NEM,BUY,0.0348,0.05,0.0152,15356.28,Materials,recovery,2026-05-08
+UNH,BUY,0.0045,0.0193,0.0148,14951.65,Healthcare,recovery,2026-05-08
+EA,BUY,0.0264,0.05,0.0236,23776.41,Technology,recovery,2026-05-08
+KHC,SELL,0.0532,0.05,-0.0032,-3220.64,Consumer Staples,recovery,2026-05-08
+FCX,BUY,0.028,0.0389,0.0108,10919.64,Materials,recovery,2026-05-08
+EPAM,BUY,0.0,0.0216,0.0216,21830.92,Technology,recovery,2026-05-08
+KR,SELL,0.0485,0.017,-0.0315,-31790.42,Consumer Staples,recovery,2026-05-08
+CRH,SELL,0.026,0.0,-0.026,-26188.47,,recovery,2026-05-08
+DELL,SELL,0.0109,0.0,-0.0109,-11032.94,,recovery,2026-05-08
+NI,SELL,0.0229,0.0,-0.0229,-23062.27,,recovery,2026-05-08
+PFG,SELL,0.0503,0.0,-0.0503,-50740.3,,recovery,2026-05-08
+VZ,SELL,0.0087,0.0,-0.0087,-8794.1,,recovery,2026-05-08
+GDDY,SELL,0.0238,0.0,-0.0238,-24042.48,,recovery,2026-05-08
+CTVA,SELL,0.0358,0.0,-0.0358,-36126.0,,recovery,2026-05-08
+WTW,SELL,0.0155,0.0,-0.0155,-15673.65,,recovery,2026-05-08
+BR,SELL,0.0487,0.0,-0.0487,-49093.38,,recovery,2026-05-08
+DUK,SELL,0.0181,0.0,-0.0181,-18289.74,,recovery,2026-05-08

@@ -1,0 +1,20 @@
+ticker,trade_type,shares,direction,current_weight,target_weight,delta_weight,trade_value_usd,close,sector,regime,run_date
+CMCSA,buy,2013,BUY,0.0,0.05,0.05,49974.33,24.815,Communication Services,recovery,2026-05-15
+COF,sell,7,SELL,0.0514,0.05,-0.0014,-1396.08,188.17,Financials,recovery,2026-05-15
+APA,sell,89,SELL,0.0535,0.05,-0.0035,-3492.55,38.885,Energy,recovery,2026-05-15
+CNC,buy,588,BUY,0.0158,0.05,0.0342,34173.85,58.09,Healthcare,recovery,2026-05-15
+PRU,buy,135,BUY,0.0,0.0139,0.0139,13851.84,102.125,Financials,recovery,2026-05-15
+PAYX,buy,546,BUY,0.0,0.05,0.05,49974.33,91.3995,Industrials,recovery,2026-05-15
+COP,sell,97,SELL,0.0212,0.0093,-0.0119,-11897.54,122.0499,Energy,recovery,2026-05-15
+SNDK,buy,35,BUY,0.0,0.05,0.05,49974.33,1407.03,Technology,recovery,2026-05-15
+MU,buy,3,BUY,0.0344,0.037,0.0026,2558.45,731.9,Technology,recovery,2026-05-15
+UNH,buy,37,BUY,0.0047,0.0193,0.0146,14571.83,391.88,Healthcare,recovery,2026-05-15
+UAL,buy,414,BUY,0.0,0.0389,0.0389,38846.84,93.66,Industrials,recovery,2026-05-15
+KR,sell,411,SELL,0.0489,0.0218,-0.0272,-27152.76,65.99,Consumer Staples,recovery,2026-05-15
+EA,sell,45,SELL,0.0267,0.0175,-0.0092,-9189.11,200.6,Technology,recovery,2026-05-15
+NI,sell,491,SELL,0.0228,0.0,-0.0228,-22821.68,46.48,,recovery,2026-05-15
+PFG,sell,504,SELL,0.0507,0.0,-0.0507,-50712.48,100.62,,recovery,2026-05-15
+CTVA,sell,445,SELL,0.0368,0.0,-0.0368,-36808.38,82.53,,recovery,2026-05-15
+PEG,sell,639,SELL,0.0489,0.0,-0.0489,-48845.16,76.44,,recovery,2026-05-15
+F,sell,2049,SELL,0.0277,0.0,-0.0277,-27702.48,13.52,,recovery,2026-05-15
+DUK,sell,147,SELL,0.0178,0.0,-0.0178,-17814.93,121.19,,recovery,2026-05-15

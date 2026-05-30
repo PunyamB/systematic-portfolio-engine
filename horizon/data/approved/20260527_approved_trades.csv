@@ -1,0 +1,17 @@
+ticker,trade_type,shares,direction,current_weight,target_weight,delta_weight,trade_value_usd,close,sector,regime,run_date
+INTU,buy,4,BUY,0.0487,0.05,0.0013,1251.75,307.54901,Technology,recovery,2026-05-27
+EXE,buy,12,BUY,0.0488,0.05,0.0012,1170.21,94.33,Energy,recovery,2026-05-27
+CHTR,sell,10,SELL,0.0516,0.05,-0.0016,-1602.25,148.69,Communication Services,recovery,2026-05-27
+EQT,buy,25,BUY,0.0486,0.05,0.0014,1405.2,55.87,Energy,recovery,2026-05-27
+APA,buy,67,BUY,0.0475,0.05,0.0025,2459.49,36.45,Energy,recovery,2026-05-27
+UAL,sell,38,SELL,0.0544,0.05,-0.0044,-4342.56,112.655,Industrials,recovery,2026-05-27
+NEM,buy,9,BUY,0.049,0.05,0.001,1021.45,108.98,Materials,recovery,2026-05-27
+COP,buy,63,BUY,0.0,0.0074,0.0074,7338.95,115.3,Energy,recovery,2026-05-27
+BBY,buy,694,BUY,0.0055,0.05,0.0445,44407.04,63.97,Consumer Discretionary,recovery,2026-05-27
+CF,buy,93,BUY,0.0392,0.05,0.0108,10762.88,115.285,Materials,recovery,2026-05-27
+UHS,buy,163,BUY,0.0241,0.05,0.0259,25774.53,157.32,Healthcare,recovery,2026-05-27
+CPB,buy,376,BUY,0.0,0.0077,0.0077,7715.8,20.4972,Consumer Staples,recovery,2026-05-27
+LULU,sell,348,SELL,0.0519,0.0054,-0.0465,-46352.36,132.925,Consumer Discretionary,recovery,2026-05-27
+ADBE,buy,78,BUY,0.0,0.019,0.019,18942.42,240.73,Technology,recovery,2026-05-27
+KHC,sell,2097,SELL,0.0515,0.0,-0.0515,-51313.59,24.47,,recovery,2026-05-27
+FISV,sell,335,SELL,0.0189,0.0,-0.0189,-18867.2,56.32,,recovery,2026-05-27

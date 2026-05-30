@@ -1,6 +1,6 @@
 # risk/monitor.py
-# Horizon V4 daily risk monitoring module.
-# Handles: 6-tier V4 circuit breaker, trailing stops, drift detection,
+# Daily risk monitoring module.
+# Handles: circuit breakers, trailing stops, drift detection,
 # beta computation, and liquidity scoring.
 # Runs EOD after NAV computation.
 
@@ -15,93 +15,42 @@ from utils.config_loader import get_config
 from utils.notifications import notify
 
 cfg = get_config()
-CB = cfg["circuit_breaker"]
 
-# Horizon V4 6-tier thresholds
-CB_T1 = CB["t1_pct"]  # 0.020
-CB_T2 = CB["t2_pct"]  # 0.030
-CB_T3 = CB["t3_pct"]  # 0.0685
-CB_T4 = CB["t4_pct"]  # 0.145
-CB_T5 = CB["t5_pct"]  # 0.215
+# Circuit breaker thresholds
+# Horizon V4 6-tier thresholds (from settings.yaml)
+CB_T1 = cfg["circuit_breaker"]["t1_pct"]  # 0.020
+CB_T2 = cfg["circuit_breaker"]["t2_pct"]  # 0.030
+CB_T3 = cfg["circuit_breaker"]["t3_pct"]  # 0.0685
+CB_T4 = cfg["circuit_breaker"]["t4_pct"]  # 0.145
+CB_T5 = cfg["circuit_breaker"]["t5_pct"]  # 0.215
 
 # Trailing stop settings
-STOP_MULTIPLIER   = cfg["stop_loss"]["vol_multiplier"]
-STOP_VOL_LOOKBACK = cfg["stop_loss"]["vol_lookback"]
-STOP_FLOOR        = cfg["stop_loss"]["floor"]
-STOP_CAP          = cfg["stop_loss"]["cap"]
-STOP_SEASONING    = cfg["stop_loss"].get("seasoning_days", 1)
+STOP_MULTIPLIER  = cfg["stop_loss"]["vol_multiplier"]    # 2.0
+STOP_VOL_LOOKBACK = cfg["stop_loss"]["vol_lookback"] # 25
+STOP_FLOOR       = cfg["stop_loss"]["floor"]         # 0.05
+STOP_CAP         = cfg["stop_loss"]["cap"]           # 0.20
 
 # Drift thresholds
-DRIFT_POSITION  = cfg["drift_rebalance"]["max_position_drift"]
-DRIFT_PORTFOLIO = cfg["drift_rebalance"]["max_portfolio_drift"]
-DRIFT_SECTOR    = cfg["drift_rebalance"]["max_sector_drift"]
+DRIFT_POSITION  = cfg["drift_rebalance"]["max_position_drift"]  # 0.03
+DRIFT_PORTFOLIO = cfg["drift_rebalance"]["max_portfolio_drift"] # 0.05
+DRIFT_SECTOR    = cfg["drift_rebalance"]["max_sector_drift"]    # 0.05
 
 # Drift detection anchor -- only updated by execute.py and stop auto-execution
 EXECUTED_WEIGHTS_PATH = Path("data/processed/executed_weights.parquet")
 
 
 # ------------------------------------------------------------
-# V4 SIX-TIER CIRCUIT BREAKER
+# CIRCUIT BREAKER
 # ------------------------------------------------------------
-
-def compute_cb_tier(drawdown: float) -> int:
-    """
-    Maps drawdown (positive float, e.g. 0.07 = 7%) to V4 tier 0-5.
-    Mirrors Horizon spec exactly. Thresholds are inclusive lower bound.
-    """
-    if drawdown >= CB_T5:
-        return 5
-    elif drawdown >= CB_T4:
-        return 4
-    elif drawdown >= CB_T3:
-        return 3
-    elif drawdown >= CB_T2:
-        return 2
-    elif drawdown >= CB_T1:
-        return 1
-    else:
-        return 0
-
-
-def _tier_actions(tier: int) -> list:
-    """Returns the operational action list for the given V4 tier."""
-    if tier == 5:
-        return [
-            "Catastrophic regime",
-            "Invested target 40%, max weight 2.5%, sum floor 0.40",
-            "Daily rebalance, NO NEW POSITIONS",
-        ]
-    elif tier == 4:
-        return [
-            "Crisis entry",
-            "Invested target 60%, max weight 2.5%, sum floor 0.40",
-            "Daily rebalance, NO NEW POSITIONS",
-        ]
-    elif tier == 3:
-        return [
-            "Deep correction",
-            "Invested target 75%, max weight 3.0%, sum floor 0.55",
-            "Rebalance every 3 trading days",
-        ]
-    elif tier == 2:
-        return [
-            "Notable correction",
-            "Invested target 95%, max weight 3.5%, sum floor 0.70",
-            "Rebalance every 5 trading days",
-        ]
-    elif tier == 1:
-        return [
-            "Mild stress (info)",
-            "Rebalance interval forced to 21 days",
-        ]
-    else:
-        return []
-
 
 def check_circuit_breaker(nav: float) -> dict:
     """
-    Computes current drawdown from peak NAV and returns V4 CB state.
-    Returns dict with tier (0-5), drawdown, peak_nav, actions.
+    Computes current drawdown from peak NAV.
+    Returns circuit breaker tier (0-4) and required actions.
+    T1 (5%)  -- info alert only
+    T2 (10%) -- max position 3.5%, rebalance weekly, no new low-liquidity positions
+    T3 (15%) -- gross exposure 70%, positions capped 2.5%, rebalance daily, no new positions 3 days
+    T4 (20%) -- reduce to 40% invested, trading paused 5 days, manual review required
     """
     nav_history = load_nav_history()
     if nav_history.empty or len(nav_history) < 2:
@@ -109,38 +58,73 @@ def check_circuit_breaker(nav: float) -> dict:
 
     peak_nav = float(nav_history["nav"].max())
     drawdown = (peak_nav - nav) / peak_nav if peak_nav > 0 else 0.0
-    tier     = compute_cb_tier(drawdown)
-    actions  = _tier_actions(tier)
+
+    if drawdown >= CB_T5:
+        tier = 5
+        actions = [
+            "Catastrophic regime",
+            "Invested target 40%, max weight 2.5%, sum floor 0.40",
+            "Daily rebalance, NO NEW POSITIONS"
+        ]
+    elif drawdown >= CB_T4:
+        tier = 4
+        actions = [
+            "Crisis entry",
+            "Invested target 60%, max weight 2.5%, sum floor 0.40",
+            "Daily rebalance, NO NEW POSITIONS"
+        ]
+    elif drawdown >= CB_T3:
+        tier = 3
+        actions = [
+            "Deep correction",
+            "Invested target 75%, max weight 3.0%, sum floor 0.55",
+            "Rebalance every 3 trading days"
+        ]
+    elif drawdown >= CB_T2:
+        tier = 2
+        actions = [
+            "Notable correction",
+            "Invested target 95%, max weight 3.5%, sum floor 0.70",
+            "Rebalance every 5 trading days"
+        ]
+    elif drawdown >= CB_T1:
+        tier = 1
+        actions = [
+            "Mild stress (info)",
+            "Rebalance interval forced to 21 days"
+        ]
+    else:
+        tier = 0
+        actions = []
 
     result = {
         "tier":     tier,
         "drawdown": drawdown,
         "peak_nav": peak_nav,
-        "actions":  actions,
+        "actions":  actions
     }
 
     if tier >= 1:
-        print(f"[risk] CB T{tier} | drawdown {drawdown:.2%} from peak ${peak_nav:,.2f}")
-        level = "critical" if tier >= 4 else ("warning" if tier >= 2 else "info")
+        print(f"[risk] Circuit breaker T{tier} triggered: drawdown {drawdown:.2%}")
         notify(
-            f"Circuit breaker T{tier} active\n"
+            f"Circuit breaker T{tier} triggered\n"
             f"Drawdown: {drawdown:.2%} from peak ${peak_nav:,.2f}\n"
-            f"Actions: {' | '.join(actions)}",
-            level=level
+            f"Actions: {', '.join(actions)}",
+            level="critical" if tier >= 4 else ("warning" if tier >= 2 else "info")
         )
 
     return result
 
 
 # ------------------------------------------------------------
-# TRAILING STOPS (unchanged from Meridian)
+# TRAILING STOPS
 # ------------------------------------------------------------
 
 def compute_trailing_stops(prices: pd.DataFrame, portfolio: pd.DataFrame) -> pd.DataFrame:
     """
     Computes vol-adjusted trailing stop price for each held position.
-    Stop distance = max(FLOOR, min(CAP, MULTIPLIER * 25d EWM vol))
-    Reference price ratchets up (highest close since entry).
+    Stop distance = max(FLOOR, min(CAP, MULTIPLIER * 25d rolling vol))
+    Reference price = highest close since entry date (ratchets up only, never down).
     Stop price = reference_price * (1 - stop_distance)
     """
     if portfolio.empty or prices.empty:
@@ -160,12 +144,12 @@ def compute_trailing_stops(prices: pd.DataFrame, portfolio: pd.DataFrame) -> pd.
         if len(ticker_prices) < STOP_VOL_LOOKBACK:
             continue
 
+        # Vol: 25-day rolling std of daily returns (annualized not needed -- raw daily vol)
         returns = ticker_prices["close"].pct_change().dropna()
-        vol_25d = float(
-            returns.tail(STOP_VOL_LOOKBACK).ewm(span=STOP_VOL_LOOKBACK, adjust=False).std().iloc[-1]
-        )
+        vol_25d = float(returns.tail(STOP_VOL_LOOKBACK).ewm(span=STOP_VOL_LOOKBACK, adjust=False).std().iloc[-1])
         stop_distance = max(STOP_FLOOR, min(STOP_CAP, STOP_MULTIPLIER * vol_25d))
 
+        # True high since entry -- anchor to entry_date, not a rolling window
         entry_date = row.get("entry_date", None)
         if pd.notna(entry_date):
             prices_since_entry = ticker_prices[
@@ -178,6 +162,7 @@ def compute_trailing_stops(prices: pd.DataFrame, portfolio: pd.DataFrame) -> pd.
                     if not prices_since_entry.empty \
                     else float(ticker_prices["close"].iloc[-1])
 
+        # Ratchet: reference price only ever moves up
         stored_ref = row["stop_reference_price"]
         new_reference = max(true_high, float(stored_ref)) if pd.notna(stored_ref) else true_high
 
@@ -186,11 +171,12 @@ def compute_trailing_stops(prices: pd.DataFrame, portfolio: pd.DataFrame) -> pd.
 
     return portfolio
 
-
 def check_trailing_stops(prices: pd.DataFrame) -> pd.DataFrame:
     """
-    Evaluates trailing stops EOD. Skips positions opened today (seasoning).
-    Returns DataFrame of triggered tickers for P2 execution next open.
+    Evaluates trailing stops EOD against current close prices.
+    Skips positions opened today -- need at least 1 day of seasoning.
+    Returns DataFrame of tickers that have breached their stop price.
+    These are P2 priority trades -- executed next market open.
     """
     from datetime import date as date_type
 
@@ -204,11 +190,12 @@ def check_trailing_stops(prices: pd.DataFrame) -> pd.DataFrame:
     if "stop_price" not in portfolio.columns:
         return pd.DataFrame()
 
+    # Skip positions opened today -- stops need at least 1 day
     today = date_type.today()
     if "entry_date" in portfolio.columns:
         portfolio_eval = portfolio[
             portfolio["entry_date"].apply(
-                lambda x: (pd.Timestamp(x).date() < today) if pd.notna(x) else True
+                lambda x: pd.Timestamp(x).date() < today if pd.notna(x) else True
             )
         ]
     else:
@@ -217,15 +204,15 @@ def check_trailing_stops(prices: pd.DataFrame) -> pd.DataFrame:
     if portfolio_eval.empty:
         return pd.DataFrame()
 
+    # Get latest close for each held ticker
     latest_prices = (
         prices.sort_values("date")
-        .groupby("ticker").last()
+        .groupby("ticker")
+        .last()
         .reset_index()[["ticker", "close"]]
     )
 
-    portfolio_eval = portfolio_eval.merge(
-        latest_prices, on="ticker", how="left", suffixes=("", "_latest")
-    )
+    portfolio_eval = portfolio_eval.merge(latest_prices, on="ticker", how="left", suffixes=("", "_latest"))
     close_col = "close_latest" if "close_latest" in portfolio_eval.columns else "close"
 
     triggered = portfolio_eval[
@@ -244,13 +231,16 @@ def check_trailing_stops(prices: pd.DataFrame) -> pd.DataFrame:
 
 
 # ------------------------------------------------------------
-# DRIFT DETECTION (unchanged from Meridian)
+# DRIFT DETECTION
 # ------------------------------------------------------------
 
 def check_drift(executed_weights: pd.DataFrame) -> dict:
     """
     Compares current portfolio weights against last executed weights.
+    executed_weights comes from executed_weights.parquet -- only updated
+    after real trade execution (rebalance or stop exits), never by proposals.
     Flags positions, portfolio, and sectors that have drifted beyond thresholds.
+    Returns dict with position_drift, portfolio_drift, sector_drift flags.
     """
     portfolio = load_portfolio()
     nav_history = load_nav_history()
@@ -264,10 +254,14 @@ def check_drift(executed_weights: pd.DataFrame) -> dict:
     merged = portfolio.merge(executed_weights, on="ticker", how="outer").fillna(0)
     merged["drift"] = (merged["current_weight"] - merged["target_weight"]).abs()
 
+    # Position-level drift
     position_drift = merged[merged["drift"] > DRIFT_POSITION]["ticker"].tolist()
-    total_drift     = float(merged["drift"].sum())
+
+    # Portfolio-level drift (sum of absolute drifts)
+    total_drift = float(merged["drift"].sum())
     portfolio_drift = total_drift > DRIFT_PORTFOLIO
 
+    # Sector-level drift
     sector_drift = []
     if "sector" in merged.columns:
         sector_current = merged.groupby("sector")["current_weight"].sum()
@@ -278,20 +272,24 @@ def check_drift(executed_weights: pd.DataFrame) -> dict:
     result = {
         "position_drift":  position_drift,
         "portfolio_drift": portfolio_drift,
-        "sector_drift":    sector_drift,
+        "sector_drift":    sector_drift
     }
 
     if position_drift or portfolio_drift or sector_drift:
-        print(f"[risk] Drift: positions={position_drift}, portfolio={portfolio_drift}, sectors={sector_drift}")
+        print(f"[risk] Drift detected: positions={position_drift}, portfolio={portfolio_drift}, sectors={sector_drift}")
 
     return result
 
 
 # ------------------------------------------------------------
-# BETA (unchanged from Meridian)
+# BETA
 # ------------------------------------------------------------
 
 def compute_beta(prices: pd.DataFrame, spy_prices: pd.DataFrame, lookback: int = 252) -> float:
+    """
+    Computes portfolio beta vs SPY using OLS regression.
+    Uses weighted average of position betas.
+    """
     portfolio = load_portfolio()
     if portfolio.empty or prices.empty or spy_prices.empty:
         return 1.0
@@ -334,10 +332,14 @@ def compute_beta(prices: pd.DataFrame, spy_prices: pd.DataFrame, lookback: int =
 
 
 # ------------------------------------------------------------
-# LIQUIDITY SCORING (unchanged from Meridian)
+# LIQUIDITY SCORING
 # ------------------------------------------------------------
 
 def compute_liquidity_scores(prices: pd.DataFrame) -> pd.DataFrame:
+    """
+    Computes position_value / ADV ratio for each held position.
+    Flags positions where ratio > 10% (liquidity_flag_pct).
+    """
     portfolio = load_portfolio()
     if portfolio.empty or prices.empty:
         return pd.DataFrame()
@@ -370,18 +372,20 @@ def compute_liquidity_scores(prices: pd.DataFrame) -> pd.DataFrame:
 def run_risk_monitor(run_date: date = None) -> dict:
     """
     Full EOD risk monitoring run.
-    Returns dict with: nav, circuit_breaker (V4 tier 0-5), stop_exits,
-    stop_triggers, drift, liquidity, beta, drawdown.
+    Loads prices and SPY prices from storage (cached).
+    Returns dict with all risk metrics and flags.
+    Keys: nav, circuit_breaker, stop_exits, stop_triggers, drift,
+          liquidity, beta, drawdown
     """
     if run_date is None:
         run_date = date.today()
 
     nav_history = load_nav_history()
-    nav = float(nav_history.iloc[-1]["nav"]) if not nav_history.empty \
-          else cfg["portfolio"]["initial_capital"]
+    nav = float(nav_history.iloc[-1]["nav"]) if not nav_history.empty else cfg["portfolio"]["initial_capital"]
 
     print(f"[risk] Running EOD risk monitor for {run_date}")
 
+    # Load prices from cache
     prices = load_prices()
     from data.storage import load_spy_prices
     spy_prices = load_spy_prices()
@@ -390,10 +394,12 @@ def run_risk_monitor(run_date: date = None) -> dict:
     stop_triggers_df = check_trailing_stops(prices)
     liquidity_scores = compute_liquidity_scores(prices)
 
+    # Build stop_exits list for runner (P2 priority trades)
     stop_exits = []
     if not stop_triggers_df.empty:
         stop_exits = stop_triggers_df["ticker"].tolist()
 
+    # Drift detection -- compare current portfolio vs last executed weights
     drift_result = {"triggered": False, "position_drift": [], "portfolio_drift": False, "sector_drift": []}
     if EXECUTED_WEIGHTS_PATH.exists():
         executed_weights = pd.read_parquet(EXECUTED_WEIGHTS_PATH)
@@ -410,8 +416,8 @@ def run_risk_monitor(run_date: date = None) -> dict:
 
     drawdown = circuit_breaker.get("drawdown", 0.0)
 
-    print(f"[risk] Beta: {beta:.3f} | CB tier: T{circuit_breaker['tier']} | "
-          f"Stop exits: {len(stop_exits)} | Drift: {drift_result['triggered']}")
+    print(f"[risk] Beta: {beta:.3f}")
+    print(f"[risk] Stop exits: {len(stop_exits)} | CB tier: {circuit_breaker['tier']} | Drift triggered: {drift_result['triggered']}")
 
     return {
         "nav":             nav,

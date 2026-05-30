@@ -83,11 +83,18 @@ def compute_nav(run_date: date = None) -> dict:
     nav = equity_value + cash
 
     # Load previous NAV for daily return calculation
+    # Filter to dates BEFORE today so re-runs don't compare today vs today
     nav_history = load_nav_history()
-    if nav_history.empty:
+    if not nav_history.empty:
+        nav_history["date"] = pd.to_datetime(nav_history["date"])
+        nav_history_prior = nav_history[nav_history["date"].dt.date < run_date]
+    else:
+        nav_history_prior = nav_history
+
+    if nav_history_prior.empty:
         daily_return = 0.0
     else:
-        prev_nav = float(nav_history.iloc[-1]["nav"])
+        prev_nav = float(nav_history_prior.iloc[-1]["nav"])
         daily_return = (nav - prev_nav) / prev_nav if prev_nav > 0 else 0.0
 
     result = {

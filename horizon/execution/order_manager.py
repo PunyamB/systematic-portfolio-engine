@@ -308,15 +308,10 @@ def reconcile_with_alpaca() -> pd.DataFrame:
 
             else:
                 # Position exists in Alpaca but not internally (manual trade or missed fill)
-                # Reconstruct stop anchor from price history rather than using today's price
+                # Anchor stop to entry price (current_price at reconciliation time)
+                # Trailing logic will ratchet upward if price rises
                 entry_date = date.today().isoformat()
-                stop_ref   = pos["current_price"]  # fallback
-
-                if not prices.empty and ticker in prices["ticker"].values:
-                    ticker_prices = prices[prices["ticker"] == ticker].sort_values("date")
-                    if not ticker_prices.empty:
-                        # Use max close in the last 252 days as best available anchor
-                        stop_ref = float(ticker_prices["close"].tail(252).max())
+                stop_ref   = float(pos["current_price"])
 
                 new_row = {
                     "ticker":               ticker,

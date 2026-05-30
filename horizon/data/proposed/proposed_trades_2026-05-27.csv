@@ -1,0 +1,17 @@
+ticker,direction,current_weight,target_weight,delta_weight,trade_value_usd,sector,regime,run_date
+INTU,BUY,0.0487,0.05,0.0013,1251.75,Technology,recovery,2026-05-27
+EXE,BUY,0.0488,0.05,0.0012,1170.21,Energy,recovery,2026-05-27
+CHTR,SELL,0.0516,0.05,-0.0016,-1602.25,Communication Services,recovery,2026-05-27
+EQT,BUY,0.0486,0.05,0.0014,1405.2,Energy,recovery,2026-05-27
+APA,BUY,0.0475,0.05,0.0025,2459.49,Energy,recovery,2026-05-27
+UAL,SELL,0.0544,0.05,-0.0044,-4342.56,Industrials,recovery,2026-05-27
+NEM,BUY,0.049,0.05,0.001,1021.45,Materials,recovery,2026-05-27
+COP,BUY,0.0,0.0074,0.0074,7338.95,Energy,recovery,2026-05-27
+BBY,BUY,0.0055,0.05,0.0445,44407.04,Consumer Discretionary,recovery,2026-05-27
+CF,BUY,0.0392,0.05,0.0108,10762.88,Materials,recovery,2026-05-27
+UHS,BUY,0.0241,0.05,0.0259,25774.53,Healthcare,recovery,2026-05-27
+CPB,BUY,0.0,0.0077,0.0077,7715.8,Consumer Staples,recovery,2026-05-27
+LULU,SELL,0.0519,0.0054,-0.0465,-46352.36,Consumer Discretionary,recovery,2026-05-27
+ADBE,BUY,0.0,0.019,0.019,18942.42,Technology,recovery,2026-05-27
+KHC,SELL,0.0515,0.0,-0.0515,-51313.59,,recovery,2026-05-27
+FISV,SELL,0.0189,0.0,-0.0189,-18867.2,,recovery,2026-05-27

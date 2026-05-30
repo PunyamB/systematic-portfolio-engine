@@ -1,0 +1,23 @@
+ticker,direction,current_weight,target_weight,delta_weight,trade_value_usd,sector,regime,run_date
+SYF,BUY,0.0,0.05,0.05,50000.0,Financials,recovery,2026-05-25
+CNC,BUY,0.0,0.05,0.05,50000.0,Healthcare,recovery,2026-05-25
+INTU,BUY,0.0,0.05,0.05,50000.0,Technology,recovery,2026-05-25
+CHTR,BUY,0.0,0.05,0.05,50000.0,Communication Services,recovery,2026-05-25
+ALL,BUY,0.0,0.05,0.05,50000.0,Financials,recovery,2026-05-25
+CMCSA,BUY,0.0,0.0398,0.0398,39793.72,Communication Services,recovery,2026-05-25
+UAL,BUY,0.0,0.05,0.05,50000.0,Industrials,recovery,2026-05-25
+EXE,BUY,0.0,0.05,0.05,50000.0,Energy,recovery,2026-05-25
+EG,BUY,0.0,0.05,0.05,50000.0,Financials,recovery,2026-05-25
+COF,BUY,0.0,0.05,0.05,50000.0,Financials,recovery,2026-05-25
+EQT,BUY,0.0,0.05,0.05,50000.0,Energy,recovery,2026-05-25
+NEM,BUY,0.0,0.05,0.05,50000.0,Materials,recovery,2026-05-25
+MET,BUY,0.0,0.05,0.05,50000.0,Financials,recovery,2026-05-25
+APA,BUY,0.0,0.05,0.05,50000.0,Energy,recovery,2026-05-25
+CAG,BUY,0.0,0.05,0.05,50000.0,Consumer Staples,recovery,2026-05-25
+LULU,BUY,0.0,0.05,0.05,50000.0,Consumer Discretionary,recovery,2026-05-25
+KHC,BUY,0.0,0.0326,0.0326,32631.13,Consumer Staples,recovery,2026-05-25
+UHS,BUY,0.0,0.0417,0.0417,41663.76,Healthcare,recovery,2026-05-25
+BBY,BUY,0.0,0.0054,0.0054,5372.16,Consumer Discretionary,recovery,2026-05-25
+ADBE,BUY,0.0,0.05,0.05,50000.0,Technology,recovery,2026-05-25
+GDDY,BUY,0.0,0.019,0.019,19001.5,Technology,recovery,2026-05-25
+CF,BUY,0.0,0.0409,0.0409,40888.05,Materials,recovery,2026-05-25

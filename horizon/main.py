@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings('ignore', category=FutureWarning)
 from pipeline.runner import run_pipeline
 
 if __name__ == "__main__":

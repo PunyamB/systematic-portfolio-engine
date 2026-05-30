@@ -1,0 +1,18 @@
+ticker,direction,current_weight,target_weight,delta_weight,trade_value_usd,sector,regime,run_date
+COP,SELL,0.0202,0.0093,-0.0109,-10863.92,Energy,recovery,2026-05-13
+CNC,BUY,0.016,0.05,0.034,34023.41,Healthcare,recovery,2026-05-13
+PRU,BUY,0.0,0.0231,0.0231,23129.69,Financials,recovery,2026-05-13
+NEM,BUY,0.0362,0.05,0.0138,13829.34,Materials,recovery,2026-05-13
+PAYX,BUY,0.0,0.05,0.05,50030.61,Industrials,recovery,2026-05-13
+KR,SELL,0.0485,0.0078,-0.0407,-40696.81,Consumer Staples,recovery,2026-05-13
+UNH,BUY,0.0048,0.0193,0.0145,14504.74,Healthcare,recovery,2026-05-13
+DELL,BUY,0.0104,0.0278,0.0174,17383.4,Technology,recovery,2026-05-13
+ADP,BUY,0.0,0.0073,0.0073,7256.4,Industrials,recovery,2026-05-13
+NI,SELL,0.0231,0.0,-0.0231,-23067.18,,recovery,2026-05-13
+PFG,SELL,0.0505,0.0,-0.0505,-50533.56,,recovery,2026-05-13
+VZ,SELL,0.0088,0.0,-0.0088,-8805.24,,recovery,2026-05-13
+CTVA,SELL,0.0369,0.0,-0.0369,-36888.66,,recovery,2026-05-13
+PEG,SELL,0.049,0.0,-0.049,-49030.47,,recovery,2026-05-13
+F,SELL,0.0274,0.0,-0.0274,-27446.35,,recovery,2026-05-13
+DUK,SELL,0.0182,0.0,-0.0182,-18197.13,,recovery,2026-05-13
+EA,SELL,0.0266,0.0,-0.0266,-26592.02,,recovery,2026-05-13

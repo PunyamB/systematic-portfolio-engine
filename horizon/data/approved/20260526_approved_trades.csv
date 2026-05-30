@@ -1,0 +1,23 @@
+ticker,trade_type,shares,direction,current_weight,target_weight,delta_weight,trade_value_usd,close,sector,regime,run_date
+SYF,buy,691,BUY,0.0,0.05,0.05,50000.0,72.32,Financials,recovery,2026-05-26
+CNC,buy,847,BUY,0.0,0.05,0.05,50000.0,59.0,Healthcare,recovery,2026-05-26
+INTU,buy,158,BUY,0.0,0.05,0.05,50000.0,316.105,Technology,recovery,2026-05-26
+CHTR,buy,346,BUY,0.0,0.05,0.05,50000.0,144.1,Communication Services,recovery,2026-05-26
+ALL,buy,230,BUY,0.0,0.05,0.05,50000.0,216.6,Financials,recovery,2026-05-26
+EXE,buy,516,BUY,0.0,0.05,0.05,50000.0,96.8,Energy,recovery,2026-05-26
+CMCSA,buy,1578,BUY,0.0,0.0398,0.0398,39793.72,25.21,Communication Services,recovery,2026-05-26
+EG,buy,141,BUY,0.0,0.05,0.05,50000.0,353.92,Financials,recovery,2026-05-26
+COF,buy,265,BUY,0.0,0.05,0.05,50000.0,188.225,Financials,recovery,2026-05-26
+UAL,buy,481,BUY,0.0,0.05,0.05,50000.0,103.79,Industrials,recovery,2026-05-26
+EQT,buy,867,BUY,0.0,0.05,0.05,50000.0,57.65,Energy,recovery,2026-05-26
+APA,buy,1300,BUY,0.0,0.05,0.05,50000.0,38.45,Energy,recovery,2026-05-26
+MET,buy,595,BUY,0.0,0.05,0.05,50000.0,83.99,Financials,recovery,2026-05-26
+CAG,buy,3696,BUY,0.0,0.05,0.05,50000.0,13.525,Consumer Staples,recovery,2026-05-26
+NEM,buy,448,BUY,0.0,0.05,0.05,50000.0,111.53,Materials,recovery,2026-05-26
+LULU,buy,389,BUY,0.0,0.05,0.05,50000.0,128.27,Consumer Discretionary,recovery,2026-05-26
+KHC,buy,2097,BUY,0.0,0.05,0.05,50000.0,23.84,Consumer Staples,recovery,2026-05-26
+UHS,buy,153,BUY,0.0,0.0243,0.0243,24254.27,158.0,Healthcare,recovery,2026-05-26
+BBY,buy,85,BUY,0.0,0.0054,0.0054,5372.15,62.8,Consumer Discretionary,recovery,2026-05-26
+GDDY,buy,560,BUY,0.0,0.05,0.05,50000.0,89.27,Technology,recovery,2026-05-26
+FISV,buy,335,BUY,0.0,0.019,0.019,19001.5,56.56,Technology,recovery,2026-05-26
+CF,buy,339,BUY,0.0,0.0409,0.0409,40888.05,120.485,Materials,recovery,2026-05-26
